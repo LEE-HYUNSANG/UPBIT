@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>설정 - HYUNSANG's UPBIT Coin Bot</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 20px;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1800px;  /* 1920px 화면에 최적화 */
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .settings-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        .card {
+            margin-bottom: 25px;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 15px 20px;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        .form-control {
+            border-radius: 6px;
+            border: 1px solid #ced4da;
+            padding: 8px 12px;
+        }
+        .form-control:focus {
+            border-color: #80bdff;
+            box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+        }
+        .market-table {
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+        .market-table th {
+            background-color: #f8f9fa;
+            text-align: center;
+            padding: 12px;
+            font-weight: 600;
+        }
+        .market-table td {
+            text-align: center;
+            padding: 12px;
+            vertical-align: middle;
+        }
+        .market-table input {
+            width: 100px;
+            text-align: center;
+            margin: 0 auto;
+        }
+        .excluded-coins {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 10px;
+        }
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #2196F3;
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        .btn-group {
+            width: 100%;
+            margin-bottom: 15px;
+        }
+        .btn-outline-primary {
+            border-color: #dee2e6;
+        }
+        .btn-outline-primary:hover {
+            background-color: #e9ecef;
+            border-color: #dee2e6;
+            color: #495057;
+        }
+        .btn-check:checked + .btn-outline-primary {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+            color: #fff;
+        }
+        .text-muted {
+            font-size: 0.875rem;
+        }
+        .input-group {
+            margin-bottom: 10px;
+        }
+        .input-group-text {
+            background-color: #f8f9fa;
+            border-color: #ced4da;
+        }
+        /* 저장 버튼 스타일 */
+        .save-button-container {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1000;
+        }
+        .save-button-container .btn {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        /* 알림 메시지 스타일 */
+        .alert-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1050;
+        }
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">HYUNSANG's UPBIT Coin Bot</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/">홈</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/settings">설정</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="settings-container">
+            <!-- 왼쪽 열 -->
+            <div class="left-column">
+                <!-- 기본 설정 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">기본 설정</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">기본 투자금액</label>
+                            <input type="number" class="form-control" id="trading.investment_amount">
+                            <div class="form-text">1회 매수시 사용할 금액</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">최대 보유 코인수</label>
+                            <input type="number" class="form-control" id="trading.max_coins">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">코인 선정 기준</label>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">최소가격</span>
+                                <input type="number" class="form-control" id="trading.min_price">
+                                <span class="input-group-text">원</span>
+                            </div>
+                            <div class="input-group mb-2">
+                                <span class="input-group-text">최대가격</span>
+                                <input type="number" class="form-control" id="trading.max_price">
+                                <span class="input-group-text">원</span>
+                            </div>
+                            <div class="input-group">
+                                <span class="input-group-text">거래량순위</span>
+                                <input type="number" class="form-control" id="trading.top_volume_count">
+                                <span class="input-group-text">위</span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">제외 코인</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="excluded-coin-input" placeholder="예: KRW-BTC">
+                                <button class="btn btn-outline-secondary" type="button" onclick="addExcludedCoin()">
+                                    <i class="bi bi-plus"></i> 추가
+                                </button>
+                            </div>
+                            <ul class="list-group excluded-coins mt-2" id="excluded-coins-list"></ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 매수 지표 설정 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">매수 지표 설정</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="market-table table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>지표</th>
+                                    <th>상승장</th>
+                                    <th>박스장</th>
+                                    <th>하락장</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>
+                                        진입 RSI 임계값
+                                        <small class="d-block text-muted">RSI 14가 이 값 이하일 때 진입 허용</small>
+                                    </td>
+                                    <td><input type="number" id="signals.buy_conditions.bull.rsi" value="40"></td>
+                                    <td><input type="number" id="signals.buy_conditions.range.rsi" value="35"></td>
+                                    <td><input type="number" id="signals.buy_conditions.bear.rsi" value="30"></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        볼린저 σ
+                                        <small class="d-block text-muted">BB(20, σ) 하단선 이탈 감도</small>
+                                    </td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bull.sigma" value="1.8"></td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.range.sigma" value="2.0"></td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bear.sigma" value="2.2"></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        거래량 배수(전봉)
+                                        <small class="d-block text-muted">current_vol ≥ prev_vol × 배수</small>
+                                    </td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bull.vol_prev" value="1.5"></td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.range.vol_prev" value="2.0"></td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bear.vol_prev" value="2.5"></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        거래량 배수(5-MA)
+                                        <small class="d-block text-muted">current_vol ≥ vol_MA5 × 배수</small>
+                                    </td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bull.vol_ma" value="1.2"></td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.range.vol_ma" value="1.5"></td>
+                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bear.vol_ma" value="1.8"></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        골든크로스 기울기
+                                        <small class="d-block text-muted">SMA5 slope ≥ min_slope (비율)</small>
+                                    </td>
+                                    <td><input type="number" step="0.01" id="signals.buy_conditions.bull.slope" value="0.12"></td>
+                                    <td><input type="number" step="0.01" id="signals.buy_conditions.range.slope" value="0.10"></td>
+                                    <td><input type="number" step="0.01" id="signals.buy_conditions.bear.slope" value="0.08"></td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <!-- 매수 조건 토글 -->
+                        <div class="mt-4">
+                            <h6 class="mb-3">매수 조건</h6>
+                            <div class="mb-2">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="signals.buy_conditions.enabled.trend_filter">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2">15분 추세 필터</label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="signals.buy_conditions.enabled.golden_cross">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2">SMA 5/20 골든크로스</label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="signals.buy_conditions.enabled.rsi">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2">RSI 과매도 2캔들 연속</label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="signals.buy_conditions.enabled.bollinger">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2">볼린저 밴드 하단선 이탈</label>
+                            </div>
+                            <div class="mb-2">
+                                <label class="toggle-switch">
+                                    <input type="checkbox" id="signals.buy_conditions.enabled.volume_surge">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2">거래량 급증</label>
+                            </div>
+                        </div>
+
+                        <!-- 매수가 선택 -->
+                        <div class="mt-4">
+                            <h6 class="mb-3">매수가 설정</h6>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="buy_price_type" id="buy_price_market" value="market" checked>
+                                <label class="btn btn-outline-primary" for="buy_price_market">시장가</label>
+
+                                <input type="radio" class="btn-check" name="buy_price_type" id="buy_price_limit" value="limit">
+                                <label class="btn btn-outline-primary" for="buy_price_limit">매수호가</label>
+
+                                <input type="radio" class="btn-check" name="buy_price_type" id="buy_price_under" value="under">
+                                <label class="btn btn-outline-primary" for="buy_price_under">매수가 -1호가</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 오른쪽 열 -->
+            <div class="right-column">
+                <!-- 매도 조건 설정 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">매도 조건 설정</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- 매도가 설정 -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">매도가 설정</h6>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="sell_price_type" id="sell_price_market" value="market" checked>
+                                <label class="btn btn-outline-primary" for="sell_price_market">시장가</label>
+
+                                <input type="radio" class="btn-check" name="sell_price_type" id="sell_price_limit" value="limit">
+                                <label class="btn btn-outline-primary" for="sell_price_limit">매도호가</label>
+
+                                <input type="radio" class="btn-check" name="sell_price_type" id="sell_price_over" value="over">
+                                <label class="btn btn-outline-primary" for="sell_price_over">매도가 +1호가</label>
+                            </div>
+                        </div>
+
+                        <!-- 손절매 설정 -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="toggle-switch mb-0">
+                                    <input type="checkbox" id="signals.sell_conditions.stop_loss.enabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2 mb-0">손절매(Stop Loss) 로직</label>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text">고정 손절</span>
+                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.stop_loss.threshold" value="-2.5">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text">추적 손절</span>
+                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.stop_loss.trailing_stop" value="0.5">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                • 고정 손절: 진입가 대비 설정값 도달 시 즉시 청산<br>
+                                • 추적 손절: 최고가 대비 설정값 이상 하락 시 청산
+                            </small>
+                        </div>
+
+                        <!-- 익절 설정 -->
+                        <div class="mb-4">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="toggle-switch mb-0">
+                                    <input type="checkbox" id="signals.sell_conditions.take_profit.enabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2 mb-0">익절(Take Profit) 로직</label>
+                            </div>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text">목표 수익</span>
+                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.take_profit.threshold" value="2.0">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text">추적 익절</span>
+                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.take_profit.trailing_profit" value="1.0">
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">
+                                • 목표 수익: 진입가 대비 설정값 도달 시 익절<br>
+                                • 추적 익절: 최고가 대비 설정값 이상 하락 시 수익 보호 청산
+                            </small>
+                        </div>
+
+                        <!-- 기타 매도 조건 -->
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="toggle-switch mb-0">
+                                    <input type="checkbox" id="signals.sell_conditions.dead_cross.enabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2 mb-0">데드크로스 조건</label>
+                            </div>
+                            <small class="text-muted d-block ms-5">
+                                SMA 5/20 하향 교차 & 단기선 기울기 ≤ -0.1
+                            </small>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center mb-2">
+                                <label class="toggle-switch mb-0">
+                                    <input type="checkbox" id="signals.sell_conditions.rsi.enabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2 mb-0">RSI 과매수 조건</label>
+                            </div>
+                            <div class="ms-5">
+                                <div class="input-group" style="width: 200px;">
+                                    <span class="input-group-text">RSI ≥</span>
+                                    <input type="number" class="form-control" id="signals.sell_conditions.rsi.threshold" value="60">
+                                </div>
+                                <small class="text-muted d-block mt-1">
+                                    2캔들 연속 조건 충족 시 청산
+                                </small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="d-flex align-items-center">
+                                <label class="toggle-switch mb-0">
+                                    <input type="checkbox" id="signals.sell_conditions.bollinger.enabled">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                                <label class="ms-2 mb-0">볼린저 밴드 상단 돌파</label>
+                            </div>
+                            <small class="text-muted d-block ms-5">
+                                BB(20, 2.0) 상단선 상향 돌파 시 즉시 청산
+                            </small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 알림 설정 -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="card-title mb-0">알림 설정</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">매매 알림</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications.trade.start">
+                                <label class="form-check-label">매매 시작</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications.trade.complete">
+                                <label class="form-check-label">매매 완료</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications.trade.profit_loss">
+                                <label class="form-check-label">수익/손실</label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">시스템 알림</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications.system.error">
+                                <label class="form-check-label">오류</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications.system.daily_summary">
+                                <label class="form-check-label">일일 요약</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="notifications.system.signal">
+                                <label class="form-check-label">시그널</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 저장 버튼 -->
+        <div class="save-button-container">
+            <button class="btn btn-secondary me-2" type="button" onclick="resetSettings()">초기화</button>
+            <button class="btn btn-primary" type="button" onclick="saveSettings()">저장</button>
+        </div>
+    </div>
+
+    <!-- 알림 모달 -->
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">알림</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="alertMessage"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">확인</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 컨테이너 -->
+    <div class="alert-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+</body>
+</html> 

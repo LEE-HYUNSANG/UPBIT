@@ -1,0 +1,1533 @@
+"""
+업비트 자동매매를 위한 시장 분석 모듈
+Version: 1.0.0
+Last Updated: 2024-03-21
+
+이 모듈은 다음과 같은 주요 기능을 제공합니다:
+
+1. 시장 상황 분석
+   - 상승장/하락장/횡보장 판단
+   - 각 상황별 신뢰도 계산
+
+2. 매매 지표 계산
+   - 추세 강도
+   - 변동성
+   - 거래량
+   - 시장 지배력
+
+3. 동적 파라미터 조정
+4. UBMI(업비트 마켓 인덱스) 기반 분석
+"""
+
+import numpy as np
+from datetime import datetime, timedelta
+import json
+import os
+import requests
+from typing import Dict, Tuple, List, Optional, Any
+import pandas as pd
+from scipy import stats
+import logging
+from pathlib import Path
+import jwt
+import uuid
+import hashlib
+from urllib.parse import urlencode
+from dotenv import load_dotenv
+import threading
+import time
+from collections import deque
+from functools import wraps
+import ta
+
+# 환경변수 로드
+load_dotenv()
+logger = logging.getLogger(__name__)
+
+def rate_limit(seconds: int = 1):
+    """API 호출 레이트 리미팅을 위한 데코레이터"""
+    def decorator(func):
+        last_called = {}
+        
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            current_time = time.time()
+            if func.__name__ not in last_called or \
+               current_time - last_called[func.__name__] >= seconds:
+                last_called[func.__name__] = current_time
+                return func(*args, **kwargs)
+            else:
+                wait_time = seconds - (current_time - last_called[func.__name__])
+                time.sleep(wait_time)
+                last_called[func.__name__] = time.time()
+                return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+class MarketAnalyzer:
+    """시장 분석기 클래스"""
+    
+    def __init__(self, config_path: str = 'config.json'):
+        """초기화"""
+        self.config_path = config_path
+        self.server_url = 'https://api.upbit.com'
+        self.request_timeout = 10
+        self.cache_duration = 900
+        self.is_running = False
+        self.monitoring_interval = 10  # 모니터링 주기 (초)
+        self.update_interval = 60  # 계좌/보유코인 업데이트 주기 (초)
+        self.request_queue = deque()
+        self.last_request_time = 0
+        self.min_request_interval = 0.1  # 100ms
+        
+        # 웹소켓 이벤트 핸들러
+        self.socketio = None
+        self.settings_lock = threading.Lock()
+        
+        # API 키 설정
+        self.access_key = os.getenv('UPBIT_ACCESS_KEY')
+        self.secret_key = os.getenv('UPBIT_SECRET_KEY')
+        
+        if not self.access_key or not self.secret_key:
+            raise ValueError("API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+            
+        # 설정 로드
+        self.config = self.load_config()
+        
+        # 캐시 초기화
+        self.cache = self._create_empty_cache()
+        
+        # 백그라운드 태스크 관련 변수
+        self.analysis_thread = None
+        self.stop_event = threading.Event()
+        
+        # 시그널 상태 저장
+        self.signals = {}
+
+    def register_socketio(self, socketio):
+        """웹소켓 이벤트 핸들러 등록"""
+        self.socketio = socketio
+        
+        @socketio.on('request_settings')
+        def handle_settings_request():
+            """설정 요청 처리"""
+            with self.settings_lock:
+                settings = self.get_settings()
+                self.socketio.emit('settings_update', settings)
+        
+        @socketio.on('save_settings')
+        def handle_settings_save(settings):
+            """설정 저장 요청 처리"""
+            with self.settings_lock:
+                success = self.save_settings(settings)
+                if success:
+                    # 다른 클라이언트에게 설정 업데이트 알림
+                    self.socketio.emit('settings_update', settings, broadcast=True)
+                self.socketio.emit('save_result', {'success': success})
+
+    def notify_settings_change(self):
+        """설정 변경 알림"""
+        if self.socketio:
+            with self.settings_lock:
+                settings = self.get_settings()
+                self.socketio.emit('settings_update', settings, broadcast=True)
+
+    def update_config(self, new_config: Dict) -> None:
+        """설정 업데이트"""
+        try:
+            logger.info("설정 업데이트 시작")
+            
+            # 기존 설정과 새로운 설정 병합
+            self.config.update(new_config)
+            
+            # 설정 파일 저장
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=4, ensure_ascii=False)
+                
+            logger.info("설정 업데이트 완료")
+            
+        except Exception as e:
+            logger.error(f"설정 업데이트 중 오류 발생: {str(e)}")
+            raise
+
+    def _create_empty_cache(self) -> Dict[str, Any]:
+        """캐시 초기화"""
+        return {
+            'market_condition': {
+                'data': None,
+                'timestamp': None
+            },
+            'market_prices': {
+                'data': {},
+                'timestamp': None
+            },
+            'candles': {
+                'data': {},
+                'timestamp': None
+            },
+            'indicators': {
+                'data': {},
+                'timestamp': None
+            }
+        }
+
+    def _is_cache_valid(self, cache_key: str, max_age: int = None) -> bool:
+        """캐시 유효성 검사"""
+        if not max_age:
+            max_age = self.cache_duration
+            
+        cache = self.cache.get(cache_key)
+        if not cache or not cache['timestamp']:
+            return False
+            
+        age = (datetime.now() - cache['timestamp']).total_seconds()
+        return age < max_age
+
+    def _update_cache(self, cache_key: str, data: Any) -> None:
+        """캐시 업데이트"""
+        self.cache[cache_key]['data'] = data
+        self.cache[cache_key]['timestamp'] = datetime.now()
+        
+        # 캐시 크기 제한
+        self._limit_cache_size()
+
+    def _limit_cache_size(self, max_items: int = 1000) -> None:
+        """캐시 크기 제한"""
+        for cache_type in ['market_prices', 'candles', 'indicators']:
+            cache_data = self.cache[cache_type]['data']
+            if len(cache_data) > max_items:
+                # 가장 오래된 항목부터 삭제
+                sorted_items = sorted(
+                    cache_data.items(),
+                    key=lambda x: x[1].get('timestamp', datetime.min)
+                )
+                for key, _ in sorted_items[:-max_items]:
+                    del cache_data[key]
+
+    def _clear_old_cache(self) -> None:
+        """오래된 캐시 정리"""
+        current_time = datetime.now()
+        
+        for cache_type in ['market_prices', 'candles', 'indicators']:
+            cache_data = self.cache[cache_type]['data']
+            to_delete = []
+            
+            for key, value in cache_data.items():
+                if 'timestamp' in value:
+                    age = (current_time - value['timestamp']).total_seconds()
+                    if age > self.cache_duration:
+                        to_delete.append(key)
+            
+            for key in to_delete:
+                del cache_data[key]
+
+    def load_config(self) -> Dict:
+        """설정 파일 로드"""
+        try:
+            if not os.path.exists(self.config_path):
+                return self._create_default_config()
+                
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                
+            return config
+        except Exception as e:
+            logger.error(f"설정 파일 로드 실패: {str(e)}")
+            return self._create_default_config()
+            
+    def _create_default_config(self) -> Dict:
+        """기본 설정 생성"""
+        config = {
+            'market_analysis': {
+                'thresholds': {
+                    'bull': 0.02,
+                    'bear': -0.02
+                },
+                'weights': {
+                    'trend': 0.3,
+                    'volatility': 0.3,
+                    'volume': 0.2,
+                    'market_dominance': 0.2
+                }
+            },
+            'trade_settings': {
+                'base_amount': 10000,
+                'max_positions': 5,
+                'risk_per_trade': 0.01
+            }
+        }
+        
+        # 설정 파일 저장
+        with open(self.config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=4)
+            
+        return config
+        
+    def _create_auth_token(self, query=None) -> Dict:
+        """JWT 토큰 생성"""
+        try:
+            payload = {
+                'access_key': self.access_key,
+                'nonce': str(uuid.uuid4())
+            }
+            
+            if query:
+                query_string = urlencode(query).encode()
+                m = hashlib.sha512()
+                m.update(query_string)
+                query_hash = m.hexdigest()
+                payload['query_hash'] = query_hash
+                payload['query_hash_alg'] = 'SHA512'
+
+            jwt_token = jwt.encode(
+                payload=payload,
+                key=self.secret_key,
+                algorithm='HS256'
+            )
+            
+            if isinstance(jwt_token, bytes):
+                jwt_token = jwt_token.decode('utf-8')
+            
+            return {'Authorization': f'Bearer {jwt_token}'}
+        except Exception as e:
+            logger.error(f"JWT 토큰 생성 실패: {str(e)}")
+            return None
+            
+    @rate_limit(0.1)
+    def _send_request(self, method: str, endpoint: str, params: dict = None) -> Any:
+        """API 요청 전송 (레이트 리미팅 적용)"""
+        try:
+            url = f"{self.server_url}{endpoint}"
+            headers = self._create_auth_token(params)
+            
+            if not headers:
+                raise Exception("인증 토큰 생성 실패")
+                
+            if method == 'GET':
+                # GET 요청의 경우 쿼리 파라미터로 전달
+                response = requests.get(
+                    url,
+                    params=params,
+                    headers=headers,
+                    timeout=self.request_timeout
+                )
+            elif method == 'POST':
+                # POST 요청의 경우 JSON 형식으로 전달
+                response = requests.post(
+                    url,
+                    json=params,
+                    headers=headers,
+                    timeout=self.request_timeout
+                )
+            else:
+                raise ValueError(f"지원하지 않는 HTTP 메서드: {method}")
+                
+            if response.status_code == 429:  # Too Many Requests
+                time.sleep(1)  # 1초 대기 후 재시도
+                return self._send_request(method, endpoint, params)
+                
+            response.raise_for_status()  # 4xx, 5xx 에러 체크
+            
+            # 응답 데이터 로깅
+            logger.debug(f"API 응답: {response.text[:200]}...")
+            
+            return response.json()
+            
+        except requests.exceptions.HTTPError as e:
+            logger.error(f"API HTTP 오류: {e.response.status_code} - {e.response.text}")
+            return None
+        except requests.exceptions.RequestException as e:
+            logger.error(f"API 요청 실패: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"API 요청 중 예외 발생: {str(e)}")
+            return None
+            
+    def get_market_info(self, market: str) -> Dict:
+        """시장 정보 조회"""
+        try:
+            params = {'markets': market}
+            data = self._send_request('GET', '/v1/ticker', params)
+            if isinstance(data, list) and len(data) > 0:
+                return data[0]
+            return None
+        except Exception as e:
+            logger.error(f"시장 정보 조회 실패: {str(e)}")
+            return None
+            
+    def get_monitored_markets(self) -> List[str]:
+        """모니터링 중인 마켓 목록 조회"""
+        try:
+            data = self._send_request('GET', '/v1/market/all', {'isDetails': 'false'})
+            if not data:
+                return []
+                
+            return [item['market'] for item in data if item['market'].startswith('KRW-')]
+        except Exception as e:
+            logger.error(f"마켓 목록 조회 실패: {str(e)}")
+            return []
+            
+    def analyze_market_condition(self) -> Tuple[str, float]:
+        """시장 상태 분석"""
+        try:
+            # 업비트 마켓 정보 조회
+            markets = self._send_request('GET', '/v1/market/all', {'isDetails': 'false'})
+            if not markets:
+                return 'NEUTRAL', 0.5
+                
+            # KRW 마켓만 필터링
+            krw_markets = [item['market'] for item in markets if item['market'].startswith('KRW-')]
+            if not krw_markets:
+                return 'NEUTRAL', 0.5
+                
+            # 상위 10개 마켓만 분석
+            target_markets = krw_markets[:10]
+            market_codes = ','.join(target_markets)
+            
+            # 현재가 정보 한 번에 조회
+            tickers = self._send_request('GET', '/v1/ticker', {'markets': market_codes})
+            if not tickers:
+                return 'NEUTRAL', 0.5
+                
+            total_change = 0
+            valid_markets = 0
+            
+            for ticker in tickers:
+                try:
+                    change_rate = float(ticker['signed_change_rate'])
+                    total_change += change_rate
+                    valid_markets += 1
+                except (KeyError, ValueError, TypeError) as e:
+                    logger.error(f"변화율 계산 중 오류: {str(e)}")
+                    continue
+                    
+            if valid_markets == 0:
+                return 'NEUTRAL', 0.5
+                
+            average_change = total_change / valid_markets
+            thresholds = self.config.get('market_analysis', {}).get('thresholds', {'bull': 0.02, 'bear': -0.02})
+            
+            try:
+                bull_threshold = float(thresholds['bull'])
+                bear_threshold = float(thresholds['bear'])
+            except (KeyError, ValueError, TypeError):
+                bull_threshold = 0.02
+                bear_threshold = -0.02
+                logger.warning("임계값 설정을 찾을 수 없어 기본값 사용: bull=2%, bear=-2%")
+            
+            if average_change > bull_threshold:
+                status = 'BULL'
+                confidence = min(abs(average_change) * 10, 1.0)
+            elif average_change < bear_threshold:
+                status = 'BEAR'
+                confidence = min(abs(average_change) * 10, 1.0)
+            else:
+                status = 'NEUTRAL'
+                confidence = 0.5
+                
+            logger.info(f"시장 상태 분석 완료: {status} (신뢰도: {confidence:.2%})")
+            return status, float(confidence)
+            
+        except Exception as e:
+            logger.error(f"시장 상태 분석 실패: {str(e)}")
+            return 'NEUTRAL', 0.5
+            
+    def calculate_market_score(self, trend_strength: float, volatility: float, 
+                             volume_ratio: float, market_dominance: float) -> float:
+        """시장 점수 계산"""
+        try:
+            weights = self.config['market_analysis']['weights']
+            
+            # 각 지표별 점수 계산
+            trend_score = np.clip(trend_strength, -1, 1)
+            vol_score = np.clip(volatility, 0, 1)
+            volume_score = np.clip(volume_ratio / 2, 0, 1)  # 최대 200% 기준
+            dominance_score = np.clip(market_dominance, 0, 1)
+            
+            # 가중 평균 계산
+            score = (
+                weights['trend'] * trend_score +
+                weights['volatility'] * vol_score +
+                weights['volume'] * volume_score +
+                weights['market_dominance'] * dominance_score
+            )
+            
+            return np.clip(score, 0, 1)
+        except Exception as e:
+            logger.error(f"시장 점수 계산 실패: {str(e)}")
+            return 0.5
+
+    def get_holdings(self) -> Dict:
+        """보유 코인 정보 조회"""
+        try:
+            accounts = self._send_request('GET', '/v1/accounts')
+            if not accounts:
+                logger.error("계좌 정보 조회 실패")
+                return {}
+            
+            holdings = {}
+            for account in accounts:
+                if account['currency'] != 'KRW' and float(account['balance']) > 0:
+                    market = f"KRW-{account['currency']}"
+                    # 현재가 조회
+                    ticker = self.get_market_info(market)
+                    if ticker:
+                        current_price = float(ticker['trade_price'])
+                        avg_price = float(account['avg_buy_price'])
+                        balance = float(account['balance'])
+                        
+                        holdings[market] = {
+                            'market': market,
+                            'currency': account['currency'],
+                            'balance': balance,
+                            'avg_price': avg_price,
+                            'current_price': current_price,
+                            'total_value': balance * current_price,
+                            'profit_loss': ((current_price - avg_price) / avg_price) * 100,
+                            'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        }
+                elif account['currency'] == 'KRW':
+                    # KRW 잔고 정보도 포함
+                    self.krw_balance = float(account['balance'])
+                    logger.info(f"KRW 잔고: {self.krw_balance:,.0f}원")
+            
+            logger.info(f"보유 코인 조회 완료: {len(holdings)}개")
+            return holdings
+        
+        except Exception as e:
+            logger.error(f"보유 코인 조회 실패: {str(e)}")
+            return {}
+
+    def get_balance(self) -> Dict:
+        """계좌 잔고 정보 조회"""
+        try:
+            accounts = self._send_request('GET', '/v1/accounts')
+            if not accounts:
+                return {'krw': 0, 'total_asset': 0}
+
+            krw_balance = 0
+            total_asset = 0
+
+            for account in accounts:
+                if account['currency'] == 'KRW':
+                    krw_balance = float(account['balance'])
+                else:
+                    market = f"KRW-{account['currency']}"
+                    ticker = self.get_market_info(market)
+                    if ticker:
+                        balance = float(account['balance'])
+                        current_price = float(ticker['trade_price'])
+                        total_asset += balance * current_price
+
+            total_asset += krw_balance
+            
+            return {
+                'krw': krw_balance,
+                'total_asset': total_asset,
+                'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+            
+        except Exception as e:
+            logger.error(f"계좌 잔고 조회 실패: {str(e)}")
+            return {'krw': 0, 'total_asset': 0}
+
+    def start(self):
+        """봇 시작"""
+        if self.is_running:
+            logger.warning("봇이 이미 실행 중입니다.")
+            return False
+
+        try:
+            # API 키 확인
+            if not self.access_key or not self.secret_key:
+                raise ValueError("API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+
+            # 이전 상태 초기화
+            self.stop_event.clear()
+            self.cache = self._create_empty_cache()
+            
+            # 봇 상태 설정
+            self.is_running = True
+            
+            # 백그라운드 분석 스레드 시작
+            if self.analysis_thread and self.analysis_thread.is_alive():
+                self.stop_event.set()  # 이전 스레드 중지 신호
+                self.analysis_thread.join(timeout=2.0)  # 이전 스레드 종료 대기
+                
+            self.analysis_thread = threading.Thread(target=self._analysis_task)
+            self.analysis_thread.daemon = True
+            self.analysis_thread.start()
+            
+            logger.info("봇이 시작되었습니다.")
+            return True
+            
+        except Exception as e:
+            error_msg = f"봇 시작 중 오류 발생: {str(e)}"
+            logger.error(error_msg)
+            self.is_running = False
+            self.stop_event.set()
+            raise RuntimeError(error_msg)
+
+    def stop(self):
+        """봇 중지"""
+        if not self.is_running:
+            logger.warning("봇이 이미 중지된 상태입니다.")
+            return True
+
+        try:
+            # 실행 상태 변경
+            self.is_running = False
+            self.stop_event.set()
+            
+            # 분석 스레드 종료 대기
+            if self.analysis_thread and self.analysis_thread.is_alive():
+                logger.info("분석 스레드 종료 대기 중...")
+                self.analysis_thread.join(timeout=5.0)
+                
+                if self.analysis_thread.is_alive():
+                    logger.warning("분석 스레드가 정상적으로 종료되지 않았습니다.")
+                else:
+                    logger.info("분석 스레드가 정상적으로 종료되었습니다.")
+            
+            # 캐시 초기화
+            self.cache = self._create_empty_cache()
+            
+            logger.info("봇이 중지되었습니다.")
+            return True
+            
+        except Exception as e:
+            error_msg = f"봇 중지 중 오류 발생: {str(e)}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+
+    def _analysis_task(self):
+        """백그라운드 분석 작업"""
+        logger.info("분석 작업 시작")
+        last_cache_cleanup = datetime.now()
+        
+        while not self.stop_event.is_set():
+            try:
+                current_time = datetime.now()
+                
+                # 주기적 캐시 정리 (1시간마다)
+                if (current_time - last_cache_cleanup).total_seconds() > 3600:
+                    self._clear_old_cache()
+                    last_cache_cleanup = current_time
+                
+                # 시장 상태 분석
+                market_condition, confidence = self.analyze_market_condition()
+                logger.info(f"시장 상태: {market_condition} (신뢰도: {confidence:.2%})")
+                
+                # 모니터링 중인 코인 분석
+                monitored_coins = self.get_monitored_coins()
+                
+                # 소켓 이벤트로 데이터 전송
+                if self.socketio:
+                    self.socketio.emit('bot_status', {
+                        'status': self.is_running,
+                        'last_update': current_time.strftime('%Y-%m-%d %H:%M:%S'),
+                        'market_condition': market_condition,
+                        'market_confidence': confidence,
+                        'monitored_count': len(monitored_coins),
+                        'total_markets': len(self.get_monitored_markets()),
+                        'memory_usage': self._get_memory_usage()
+                    })
+                    
+                    self.socketio.emit('monitored_coins_update', {
+                        'coins': monitored_coins,
+                        'timestamp': current_time.strftime('%Y-%m-%d %H:%M:%S')
+                    })
+                
+                # 설정된 간격만큼 대기
+                self.stop_event.wait(self.monitoring_interval)
+                
+            except Exception as e:
+                logger.error(f"분석 작업 중 오류 발생: {str(e)}")
+                if not self.stop_event.is_set():
+                    self.stop_event.wait(5)  # 오류 발생 시 5초 대기 후 재시도
+
+        logger.info("분석 작업 종료")
+
+    def _get_memory_usage(self) -> Dict[str, int]:
+        """메모리 사용량 조회"""
+        import sys
+        
+        memory_usage = {
+            'cache_size': sum(sys.getsizeof(str(v)) for v in self.cache.values()),
+            'market_prices': sys.getsizeof(str(self.cache['market_prices']['data'])),
+            'candles': sys.getsizeof(str(self.cache['candles']['data'])),
+            'indicators': sys.getsizeof(str(self.cache['indicators']['data']))
+        }
+        
+        return memory_usage
+
+    def get_monitored_coins(self) -> List[Dict]:
+        """모니터링 중인 코인 목록과 신호 조회"""
+        try:
+            # 설정에서 필터링 기준 가져오기
+            settings = self.config.get('trade_settings', {})
+            min_price = settings.get('min_price', 700)
+            max_price = settings.get('max_price', 23000)
+            top_volume = settings.get('top_volume', 20)
+            
+            logger.info(f"코인 선정 기준: 가격 {min_price}~{max_price}원, 상위 거래량 {top_volume}개")
+            
+            # 업비트 마켓 정보 조회
+            markets = self._send_request('GET', '/v1/market/all', {'isDetails': 'true'})
+            if not markets:
+                logger.error("마켓 정보 조회 실패")
+                return []
+            
+            # KRW 마켓만 필터링
+            krw_markets = [item for item in markets if item['market'].startswith('KRW-')]
+            logger.info(f"전체 마켓 수: {len(krw_markets)}")
+            
+            # 마켓 코드 리스트 생성
+            market_codes = ','.join([market['market'] for market in krw_markets])
+            
+            # 현재가 및 거래량 정보 한 번에 조회
+            tickers = self._send_request('GET', '/v1/ticker', {'markets': market_codes})
+            if not tickers:
+                logger.error("현재가 정보 조회 실패")
+                return []
+                
+            # 거래량 정보 수집 및 필터링
+            market_info = []
+            for ticker in tickers:
+                try:
+                    market = next((m for m in krw_markets if m['market'] == ticker['market']), None)
+                    if not market:
+                        continue
+                        
+                    current_price = float(ticker['trade_price'])
+                    trade_volume = float(ticker['acc_trade_price_24h'])
+                    
+                    # 가격 범위 필터링
+                    if min_price <= current_price <= max_price:
+                        market_info.append({
+                            'market': market['market'],
+                            'name': market.get('korean_name', market['market']),
+                            'current_price': current_price,
+                            'trade_volume': trade_volume,
+                            'change_rate': float(ticker['signed_change_rate']) * 100
+                        })
+                except Exception as e:
+                    logger.error(f"{ticker['market']} 정보 처리 중 오류: {str(e)}")
+                    continue
+            
+            # 거래량 기준 정렬 및 상위 선택
+            market_info.sort(key=lambda x: x['trade_volume'], reverse=True)
+            selected_markets = market_info[:top_volume]
+            
+            logger.info(f"선정 기준 통과 마켓 수: {len(selected_markets)}")
+            
+            # 선정된 코인 분석
+            monitored_coins = []
+            for market in selected_markets:
+                try:
+                    market_code = market['market']
+                    logger.debug(f"{market_code} 분석 시작")
+                    
+                    # 5분봉 데이터 조회
+                    candles_5m = self.get_candles(market_code, interval='minute5', count=100)
+                    if not candles_5m:
+                        continue
+                        
+                    # 15분봉 데이터 조회
+                    candles_15m = self.get_candles(market_code, interval='minute15', count=100)
+                    if not candles_15m:
+                        continue
+                    
+                    # DataFrame 변환
+                    df_5m = self.prepare_dataframe(candles_5m)
+                    df_15m = self.prepare_dataframe(candles_15m)
+                    
+                    # 지표 계산
+                    self.add_indicators(df_5m, df_15m)
+                    
+                    # 매수 조건 확인
+                    config = self.config.get('indicators', {})
+                    is_buy, conditions = self.check_buy_conditions(df_5m, df_15m, config)
+                    
+                    # 코인 데이터 생성
+                    coin_data = {
+                        'market': market_code,
+                        'name': market['name'],
+                        'current_price': market['current_price'],
+                        'change_rate': market['change_rate'],
+                        'trade_volume': market['trade_volume'],
+                        'indicators': conditions,
+                        'values': {
+                            'rsi': conditions['values'].get('rsi'),
+                            'slope': conditions['values'].get('slope'),
+                            'volume_ratio': conditions['values'].get('volume_ma'),
+                            'bb_position': conditions['values'].get('bb_lower')
+                        },
+                        'status': '매수 가능' if is_buy else '모니터링',
+                        'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                    }
+                    
+                    monitored_coins.append(coin_data)
+                    
+                except Exception as e:
+                    logger.error(f"{market_code} 분석 중 오류 발생: {str(e)}")
+                    continue
+            
+            # 신호 강도 기준으로 정렬
+            monitored_coins.sort(key=lambda x: sum(1 for v in x['indicators'].values() if v), reverse=True)
+            
+            logger.info(f"모니터링 대상 코인 {len(monitored_coins)}개 선택됨")
+            return monitored_coins
+            
+        except Exception as e:
+            logger.error(f"모니터링 코인 목록 조회 실패: {str(e)}")
+            return []
+
+    def save_settings(self, settings: dict) -> bool:
+        """
+        웹 인터페이스의 설정을 저장하고 내부 설정과 동기화
+        
+        Args:
+            settings: 웹 인터페이스에서 전달받은 설정값
+            
+        Returns:
+            bool: 저장 성공 여부
+        """
+        try:
+            # 설정 유효성 검증
+            if not self._validate_settings(settings):
+                logger.error("유효하지 않은 설정값이 포함되어 있습니다.")
+                return False
+
+            # 임시 파일에 먼저 저장
+            temp_path = f"{self.config_path}.temp"
+            
+            # 새로운 설정 구성
+            new_config = {
+                'trading': self._prepare_trading_settings(settings),
+                'signals': self._prepare_signal_settings(settings),
+                'notifications': self._prepare_notification_settings(settings)
+            }
+
+            # 임시 파일에 저장
+            with open(temp_path, 'w', encoding='utf-8') as f:
+                json.dump(new_config, f, indent=4, ensure_ascii=False)
+
+            # 파일 교체 (atomic operation)
+            import os
+            os.replace(temp_path, self.config_path)
+            
+            # 메모리 상의 설정 업데이트
+            self.config = new_config
+            
+            logger.info("설정이 성공적으로 저장되었습니다.")
+            return True
+            
+        except Exception as e:
+            logger.error(f"설정 저장 실패: {str(e)}")
+            if os.path.exists(temp_path):
+                try:
+                    os.remove(temp_path)
+                except:
+                    pass
+            return False
+
+    def _validate_settings(self, settings: dict) -> bool:
+        """설정값 유효성 검증"""
+        try:
+            # 필수 설정 존재 여부 확인
+            required_keys = ['trading', 'signals', 'notifications']
+            if not all(key in settings for key in required_keys):
+                logger.error("필수 설정이 누락되었습니다.")
+                return False
+
+            # 거래 설정 검증
+            trading = settings.get('trading', {})
+            if not all(key in trading for key in ['investment_amount', 'max_coins', 'min_price', 'max_price']):
+                logger.error("거래 설정이 올바르지 않습니다.")
+                return False
+
+            # 수치형 데이터 범위 검증
+            if not (1000 <= float(trading['investment_amount']) <= 1000000):
+                logger.error("투자금액이 허용 범위를 벗어났습니다.")
+                return False
+            if not (1 <= int(trading['max_coins']) <= 10):
+                logger.error("최대 코인 수가 허용 범위를 벗어났습니다.")
+                return False
+
+            return True
+
+        except Exception as e:
+            logger.error(f"설정 검증 중 오류 발생: {str(e)}")
+            return False
+
+    def _prepare_trading_settings(self, settings: dict) -> dict:
+        """거래 설정 준비"""
+        trading = settings.get('trading', {})
+        return {
+            'investment_amount': float(trading['investment_amount']),
+            'max_coins': int(trading['max_coins']),
+            'min_price': float(trading['min_price']),
+            'max_price': float(trading['max_price']),
+            'top_volume_count': int(trading['top_volume_count']),
+            'excluded_coins': trading.get('excluded_coins', [])
+        }
+
+    def _prepare_signal_settings(self, settings: dict) -> dict:
+        """신호 설정 준비"""
+        signals = settings.get('signals', {})
+        return {
+            'buy_conditions': {
+                'enabled': signals['buy_conditions']['enabled'],
+                'bull': self._convert_numeric_values(signals['buy_conditions']['bull']),
+                'range': self._convert_numeric_values(signals['buy_conditions']['range']),
+                'bear': self._convert_numeric_values(signals['buy_conditions']['bear'])
+            },
+            'sell_conditions': {
+                'stop_loss': {
+                    'enabled': signals['sell_conditions']['stop_loss']['enabled'],
+                    'threshold': float(signals['sell_conditions']['stop_loss']['threshold']),
+                    'trailing_stop': float(signals['sell_conditions']['stop_loss']['trailing_stop'])
+                },
+                'take_profit': {
+                    'enabled': signals['sell_conditions']['take_profit']['enabled'],
+                    'threshold': float(signals['sell_conditions']['take_profit']['threshold']),
+                    'trailing_profit': float(signals['sell_conditions']['take_profit']['trailing_profit'])
+                },
+                'dead_cross': {'enabled': signals['sell_conditions']['dead_cross']['enabled']},
+                'rsi': {
+                    'enabled': signals['sell_conditions']['rsi']['enabled'],
+                    'threshold': float(signals['sell_conditions']['rsi']['threshold'])
+                },
+                'bollinger': {'enabled': signals['sell_conditions']['bollinger']['enabled']}
+            }
+        }
+
+    def _prepare_notification_settings(self, settings: dict) -> dict:
+        """알림 설정 준비"""
+        notifications = settings.get('notifications', {})
+        return {
+            'trade': {
+                'start': notifications['trade']['start'],
+                'complete': notifications['trade']['complete'],
+                'profit_loss': notifications['trade']['profit_loss']
+            },
+            'system': {
+                'error': notifications['system']['error'],
+                'daily_summary': notifications['system']['daily_summary'],
+                'signal': notifications['system']['signal']
+            }
+        }
+
+    def _convert_numeric_values(self, settings: dict) -> dict:
+        """수치형 설정값 변환"""
+        return {k: float(v) if isinstance(v, (str, int, float)) else v 
+               for k, v in settings.items()}
+
+    def get_settings(self) -> dict:
+        """현재 설정 조회"""
+        return self.config 
+
+    def calculate_signals(self, market: str) -> Dict:
+        """매수 신호 계산"""
+        try:
+            # 캔들 데이터 조회
+            candles = self._get_candles(market, interval='minute15', count=30)
+            if not candles:
+                return None
+            
+            df = pd.DataFrame(candles)
+            df['trade_price'] = pd.to_numeric(df['trade_price'])
+            df['candle_acc_trade_volume'] = pd.to_numeric(df['candle_acc_trade_volume'])
+            
+            # 15분 추세
+            trend, trend_value = self._calculate_trend(df)
+            
+            # 골든크로스
+            golden_cross, gc_value = self.check_golden_cross(df)
+            
+            # RSI
+            rsi = self.calculate_rsi(df)
+            rsi_oversold = rsi < 30
+            
+            # 볼린저 밴드
+            bb_break, bb_value = self._check_bollinger_break(df)
+            
+            # 거래량 급증
+            volume_surge, volume_value = self._check_volume_surge(df)
+            
+            signals = {
+                'market': market,
+                'market_name': self._get_korean_name(market),
+                'trend': trend,
+                'trend_value': trend_value,
+                'golden_cross': golden_cross,
+                'gc_value': gc_value,
+                'rsi_oversold': rsi_oversold,
+                'rsi_value': f'{rsi:.1f}',
+                'bb_break': bb_break,
+                'bb_value': bb_value,
+                'volume_surge': volume_surge,
+                'volume_value': volume_value,
+                'status': '모니터링 중',
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            return signals
+            
+        except Exception as e:
+            logger.error(f"신호 계산 중 오류 발생: {str(e)}")
+            return None
+
+    def _calculate_trend(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """15분 추세 계산"""
+        try:
+            closes = df['trade_price'].values
+            ma5 = pd.Series(closes).rolling(5).mean().values
+            trend = ma5[-1] > ma5[-2]
+            value = f"{((ma5[-1] - ma5[-2]) / ma5[-2] * 100):.2f}%"
+            return trend, value
+        except Exception as e:
+            logger.error(f"추세 계산 중 오류: {str(e)}")
+            return False, "0.00%"
+
+    def check_golden_cross(self, df: pd.DataFrame) -> Tuple[bool, float]:
+        """
+        골든크로스 발생 여부와 단기 이동평균선 기울기 확인
+        
+        Args:
+            df (pd.DataFrame): 캔들 데이터프레임
+            
+        Returns:
+            Tuple[bool, float]: (골든크로스 발생 여부, 단기 이동평균선 기울기)
+        """
+        try:
+            if len(df) < 20:
+                return False, 0.0
+                
+            # 5일선과 20일선 계산
+            df['SMA5'] = df['close'].rolling(window=5).mean()
+            df['SMA20'] = df['close'].rolling(window=20).mean()
+            
+            # 골든크로스 확인 (이전 봉에서는 5이평이 20이평 아래였다가, 현재 봉에서 위로 올라선 경우)
+            cross = (df['SMA5'].iloc[-2] <= df['SMA20'].iloc[-2]) and (df['SMA5'].iloc[-1] > df['SMA20'].iloc[-1])
+            
+            # 5일 이동평균선의 기울기 계산
+            slope = (df['SMA5'].iloc[-1] - df['SMA5'].iloc[-2]) / df['SMA5'].iloc[-2]
+            
+            return cross, slope
+            
+        except Exception as e:
+            logger.error(f"골든크로스 확인 중 오류 발생: {str(e)}")
+            return False, 0.0
+
+    def calculate_rsi(self, candles: List[Dict], period: int = 14) -> Optional[float]:
+        """RSI 계산"""
+        try:
+            if len(candles) < period + 1:
+                return None
+                
+            prices = [float(candle['trade_price']) for candle in candles]
+            deltas = np.diff(prices)
+            
+            # 상승/하락 구분
+            gains = np.where(deltas > 0, deltas, 0)
+            losses = np.where(deltas < 0, -deltas, 0)
+            
+            # 초기 평균 계산
+            avg_gain = np.mean(gains[:period])
+            avg_loss = np.mean(losses[:period])
+            
+            if avg_loss == 0:
+                return 100.0
+                
+            # RSI 계산
+            rs = avg_gain / avg_loss
+            rsi = 100 - (100 / (1 + rs))
+            
+            # 디버깅을 위한 로그 추가
+            logger.debug(f"RSI 계산 결과: {rsi:.2f} (기간: {period})")
+            
+            return rsi
+            
+        except Exception as e:
+            logger.error(f"RSI 계산 중 오류: {str(e)}")
+            return None
+
+    def _check_bollinger_break(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """볼린저 밴드 돌파 확인"""
+        try:
+            closes = df['trade_price'].values
+            ma20 = pd.Series(closes).rolling(20).mean()
+            std20 = pd.Series(closes).rolling(20).std()
+            lower_band = ma20 - (2 * std20)
+            is_break = closes[-1] < lower_band.iloc[-1]
+            value = f"{((closes[-1] - lower_band.iloc[-1]) / lower_band.iloc[-1] * 100):.2f}%"
+            return is_break, value
+        except Exception as e:
+            logger.error(f"볼린저 밴드 확인 중 오류: {str(e)}")
+            return False, "0.00%"
+
+    def _check_volume_surge(self, df: pd.DataFrame) -> Tuple[bool, str]:
+        """거래량 급증 확인"""
+        try:
+            volumes = df['candle_acc_trade_volume'].values
+            avg_volume = pd.Series(volumes[:-1]).mean()
+            is_surge = volumes[-1] > (avg_volume * 2)
+            value = f"{(volumes[-1] / avg_volume * 100):.2f}%"
+            return is_surge, value
+        except Exception as e:
+            logger.error(f"거래량 확인 중 오류: {str(e)}")
+            return False, "0.00%"
+
+    def _get_candles(self, market: str, interval: str = 'minute5', count: int = 100) -> List[Dict]:
+        """
+        지정된 시장의 캔들 데이터를 가져옵니다.
+        
+        Args:
+            market (str): 시장 코드 (예: KRW-BTC)
+            interval (str): 시간 간격 ('minute5', 'minute15' 등)
+            count (int): 가져올 캔들 수
+            
+        Returns:
+            List[Dict]: 캔들 데이터 리스트
+        """
+        try:
+            endpoint = f'/v1/candles/{interval}'
+            params = {
+                'market': market,
+                'count': min(count, 200)  # API 제한
+            }
+            
+            response = self._send_request('GET', endpoint, params)
+            if not response or not isinstance(response, list):
+                logger.error(f"{market} 캔들 데이터 조회 실패")
+                return []
+                
+            # 현재 진행 중인 봉은 제외
+            current_time = datetime.now()
+            filtered_candles = [
+                candle for candle in response 
+                if datetime.strptime(candle['candle_date_time_kst'], '%Y-%m-%dT%H:%M:%S') < current_time
+            ]
+            
+            return filtered_candles
+            
+        except Exception as e:
+            logger.error(f"{market} 캔들 데이터 조회 중 오류 발생: {str(e)}")
+            return []
+
+    def _get_korean_name(self, market: str) -> str:
+        """마켓 코드의 한글 이름 조회"""
+        try:
+            if not hasattr(self, '_market_info_cache'):
+                response = self._send_request('GET', '/v1/market/all', {'isDetails': 'true'})
+                self._market_info_cache = {item['market']: item['korean_name'] for item in response}
+            return self._market_info_cache.get(market, market)
+        except Exception as e:
+            logger.error(f"마켓 이름 조회 중 오류: {str(e)}")
+            return market
+
+    def market_buy(self, market: str) -> Dict:
+        """시장가 매수"""
+        try:
+            # 설정에서 종목당 투자금액 가져오기
+            investment_amount = self.config.get('investment_amount', 10000)
+            
+            # 잔고 확인
+            balance = self.get_balance()
+            if balance['krw'] < investment_amount:
+                error_msg = f"잔액 부족: 필요금액 {investment_amount:,}원, 보유금액 {balance['krw']:,}원"
+                logger.error(error_msg)
+                return {'success': False, 'error': error_msg}
+            
+            # 매수 주문 파라미터 설정
+            params = {
+                'market': market,
+                'side': 'bid',
+                'price': str(investment_amount),
+                'ord_type': 'price'
+            }
+            
+            # 매수 주문 실행
+            response = self._send_request('POST', '/v1/orders', params)
+            if response:
+                success_msg = f"{market} 시장가 매수 주문 성공: {investment_amount:,}원"
+                logger.info(success_msg)
+                return {
+                    'success': True,
+                    'data': {
+                        'market': market,
+                        'order_type': 'market_buy',
+                        'investment_amount': investment_amount,
+                        'order_details': response
+                    }
+                }
+            else:
+                error_msg = f"{market} 매수 주문 실패"
+                logger.error(error_msg)
+                return {'success': False, 'error': error_msg}
+                
+        except Exception as e:
+            error_msg = f"시장가 매수 중 오류 발생: {str(e)}"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+
+    def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
+        """캔들 데이터 조회"""
+        try:
+            # 업비트 API 엔드포인트 수정
+            if interval == 'minute15':
+                endpoint = '/v1/candles/minutes/15'
+            elif interval == 'minute1':
+                endpoint = '/v1/candles/minutes/1'
+            elif interval == 'minute3':
+                endpoint = '/v1/candles/minutes/3'
+            elif interval == 'minute5':
+                endpoint = '/v1/candles/minutes/5'
+            elif interval == 'minute10':
+                endpoint = '/v1/candles/minutes/10'
+            elif interval == 'minute30':
+                endpoint = '/v1/candles/minutes/30'
+            elif interval == 'minute60':
+                endpoint = '/v1/candles/minutes/60'
+            elif interval == 'minute240':
+                endpoint = '/v1/candles/minutes/240'
+            elif interval == 'day':
+                endpoint = '/v1/candles/days'
+            elif interval == 'week':
+                endpoint = '/v1/candles/weeks'
+            elif interval == 'month':
+                endpoint = '/v1/candles/months'
+            else:
+                raise ValueError(f"지원하지 않는 캔들 간격: {interval}")
+
+            params = {
+                'market': market,
+                'count': count
+            }
+            candles = self._send_request('GET', endpoint, params)
+            if not candles:
+                return []
+            
+            # 시간 순서대로 정렬 (과거 -> 현재)
+            candles.reverse()
+            return candles
+            
+        except Exception as e:
+            logger.error(f"캔들 데이터 조회 중 오류: {str(e)}")
+            return []
+
+    def calculate_moving_average(self, candles: List[Dict], period: int = 20) -> Optional[List[float]]:
+        """이동평균선 계산"""
+        try:
+            if len(candles) < period:
+                return None
+                
+            prices = [float(candle['trade_price']) for candle in candles]
+            ma = []
+            
+            for i in range(len(prices) - period + 1):
+                ma.append(sum(prices[i:i+period]) / period)
+                
+            return ma
+            
+        except Exception as e:
+            logger.error(f"이동평균선 계산 중 오류: {str(e)}")
+            return None
+
+    def calculate_bollinger_bands(self, candles: List[Dict], period: int = 20, k: float = 2.0) -> Optional[Dict]:
+        """볼린저 밴드 계산"""
+        try:
+            if len(candles) < period:
+                return None
+                
+            prices = np.array([float(candle['trade_price']) for candle in candles])
+            
+            # 이동평균 계산
+            ma = np.convolve(prices, np.ones(period)/period, mode='valid')
+            
+            # 표준편차 계산
+            std = np.array([np.std(prices[i:i+period]) for i in range(len(prices)-period+1)])
+            
+            # 밴드 계산
+            upper = ma + (k * std)
+            lower = ma - (k * std)
+            
+            # 디버깅을 위한 로그 추가
+            logger.debug(f"볼린저 밴드 계산 완료 - 기간: {period}, K: {k}")
+            logger.debug(f"현재가: {prices[-1]:.2f}")
+            logger.debug(f"상단밴드: {upper[-1]:.2f}")
+            logger.debug(f"중간밴드: {ma[-1]:.2f}")
+            logger.debug(f"하단밴드: {lower[-1]:.2f}")
+            
+            return {
+                'middle': ma.tolist(),
+                'upper': upper.tolist(),
+                'lower': lower.tolist()
+            }
+            
+        except Exception as e:
+            logger.error(f"볼린저 밴드 계산 중 오류: {str(e)}")
+            return None
+
+    def add_indicators(self, df_5m: pd.DataFrame, df_15m: pd.DataFrame) -> None:
+        """
+        5분봉과 15분봉 데이터에 기술적 지표를 추가합니다.
+        
+        Args:
+            df_5m (pd.DataFrame): 5분봉 데이터 (OHLCV)
+            df_15m (pd.DataFrame): 15분봉 데이터 (OHLCV)
+        """
+        try:
+            # 5분봉 지표
+            df_5m['SMA5'] = ta.trend.sma_indicator(df_5m['close'], window=5)
+            df_5m['SMA20'] = ta.trend.sma_indicator(df_5m['close'], window=20)
+            df_5m['SMA5_slope'] = (df_5m['SMA5'] - df_5m['SMA5'].shift(1)) / df_5m['SMA5'].shift(1)
+            
+            df_5m['RSI14'] = ta.momentum.rsi(df_5m['close'], window=14)
+            
+            bb = ta.volatility.BollingerBands(df_5m['close'], window=20, window_dev=2.0)
+            df_5m['BB_L'] = bb.bollinger_lband()
+            
+            df_5m['VOL_MA5'] = df_5m['volume'].rolling(5).mean()
+            
+            # 15분봉 지표 (추세 필터용)
+            df_15m['EMA50'] = ta.trend.ema_indicator(df_15m['close'], window=50)
+            
+            logger.debug("기술적 지표 계산 완료")
+            
+        except Exception as e:
+            logger.error(f"기술적 지표 계산 중 오류 발생: {str(e)}")
+            raise
+
+    def check_buy_conditions(self, df_5m: pd.DataFrame, df_15m: pd.DataFrame, config: dict) -> Tuple[bool, Dict]:
+        """
+        모든 매수 조건을 검증합니다.
+        
+        Args:
+            df_5m (pd.DataFrame): 5분봉 데이터프레임
+            df_15m (pd.DataFrame): 15분봉 데이터프레임
+            config (dict): 설정값
+            
+        Returns:
+            Tuple[bool, Dict]: (매수 조건 충족 여부, 각 조건별 상태)
+        """
+        try:
+            # 조건 상태를 저장할 딕셔너리
+            conditions = {
+                'trend_filter': False,
+                'golden_cross': False,
+                'slope': 0.0,
+                'rsi_oversold': False,
+                'bollinger_break': False,
+                'volume_surge': False,
+                'values': {}  # 지표값을 저장할 딕셔너리
+            }
+            
+            # 1. 15분봉 EMA 50 기반 추세 필터
+            conditions['trend_filter'] = bool(self.check_trend_filter(df_15m))
+            conditions['values']['ema50'] = float(df_15m['EMA50'].iloc[-1]) if not df_15m.empty and 'EMA50' in df_15m else None
+            
+            # 2. 5분봉 골든크로스 + 기울기 확인
+            cross, slope = self.check_golden_cross(df_5m)
+            conditions['golden_cross'] = bool(cross)
+            conditions['slope'] = float(slope)
+            conditions['values']['sma5'] = float(df_5m['SMA5'].iloc[-1]) if not df_5m.empty and 'SMA5' in df_5m else None
+            conditions['values']['sma20'] = float(df_5m['SMA20'].iloc[-1]) if not df_5m.empty and 'SMA20' in df_5m else None
+            conditions['values']['slope'] = float(slope)
+            
+            # 3. RSI 과매도 확인
+            conditions['rsi_oversold'] = bool(self.check_rsi_conditions(
+                df_5m, 
+                period=config.get('rsi_period', 14),
+                oversold=config.get('rsi_oversold', 30)
+            ))
+            conditions['values']['rsi'] = float(df_5m['RSI14'].iloc[-1]) if not df_5m.empty and 'RSI14' in df_5m else None
+            
+            # 4. 볼린저 밴드 하단 이탈 확인
+            conditions['bollinger_break'] = bool(self.check_bollinger_conditions(
+                df_5m,
+                period=config.get('bb_period', 20),
+                std_dev=config.get('bb_std_dev', 2.0)
+            ))
+            conditions['values']['bb_lower'] = float(df_5m['BB_L'].iloc[-1]) if not df_5m.empty and 'BB_L' in df_5m else None
+            
+            # 5. 거래량 급증 확인
+            conditions['volume_surge'] = bool(self.check_volume_surge(
+                df_5m,
+                period=config.get('volume_period', 20),
+                surge_ratio=config.get('volume_surge_ratio', 2.0)
+            ))
+            conditions['values']['volume'] = float(df_5m['volume'].iloc[-1]) if not df_5m.empty else None
+            conditions['values']['volume_ma'] = float(df_5m['VOL_MA5'].iloc[-1]) if not df_5m.empty and 'VOL_MA5' in df_5m else None
+            
+            # 모든 조건이 충족되었는지 확인
+            should_buy = all([
+                conditions['trend_filter'],
+                conditions['golden_cross'],
+                conditions['slope'] >= config.get('min_slope', 0.1),
+                conditions['rsi_oversold'],
+                conditions['bollinger_break'],
+                conditions['volume_surge']
+            ])
+            
+            return bool(should_buy), conditions
+            
+        except Exception as e:
+            logger.error(f"매수 조건 검증 중 오류 발생: {str(e)}")
+            return False, {'trend_filter': False, 'golden_cross': False, 'slope': 0.0, 
+                         'rsi_oversold': False, 'bollinger_break': False, 
+                         'volume_surge': False, 'values': {}}
+
+    def prepare_dataframe(self, candles: List[Dict]) -> pd.DataFrame:
+        """
+        캔들 데이터를 데이터프레임으로 변환하고 필요한 컬럼을 추가합니다.
+        
+        Args:
+            candles (List[Dict]): API로부터 받은 캔들 데이터
+            
+        Returns:
+            pd.DataFrame: 처리된 데이터프레임
+        """
+        try:
+            if not candles:
+                return pd.DataFrame()
+                
+            # 기본 데이터프레임 생성
+            df = pd.DataFrame(candles)
+            
+            # 컬럼명 변경
+            df = df.rename(columns={
+                'trade_price': 'close',
+                'opening_price': 'open',
+                'high_price': 'high',
+                'low_price': 'low',
+                'candle_acc_trade_volume': 'volume',
+                'candle_date_time_kst': 'datetime'
+            })
+            
+            # datetime 컬럼을 인덱스로 설정
+            df['datetime'] = pd.to_datetime(df['datetime'])
+            df = df.set_index('datetime')
+            
+            # 정렬 (오래된 데이터가 먼저 오도록)
+            df = df.sort_index()
+            
+            # 필수 컬럼만 선택
+            df = df[['open', 'high', 'low', 'close', 'volume']]
+            
+            return df
+            
+        except Exception as e:
+            logger.error(f"DataFrame 변환 중 오류 발생: {str(e)}")
+            raise
+
+    def calculate_ema(self, df: pd.DataFrame, period: int = 50) -> pd.Series:
+        """
+        지수이동평균(EMA) 계산
+        
+        Args:
+            df (pd.DataFrame): 캔들 데이터프레임
+            period (int): 기간
+            
+        Returns:
+            pd.Series: EMA 시리즈
+        """
+        return ta.trend.ema_indicator(df['close'], window=period)
+        
+    def calculate_sma_slope(self, df: pd.DataFrame, period: int = 5) -> float:
+        """
+        이동평균선의 기울기 계산
+        
+        Args:
+            df (pd.DataFrame): 캔들 데이터프레임
+            period (int): SMA 기간
+            
+        Returns:
+            float: 기울기 값
+        """
+        sma = df['close'].rolling(window=period).mean()
+        if len(sma) < 2:
+            return 0.0
+            
+        # 최근 2개 값의 기울기 계산
+        y2, y1 = sma.iloc[-1], sma.iloc[-2]
+        return (y2 - y1) / y1  # 변화율로 기울기 표현
+        
+    def check_trend_filter(self, df_15m: pd.DataFrame) -> bool:
+        """
+        15분봉 기준 추세 필터 확인 (EMA 50 기반)
+        
+        Args:
+            df_15m (pd.DataFrame): 15분봉 데이터프레임
+            
+        Returns:
+            bool: 상승 추세 여부
+        """
+        ema50 = self.calculate_ema(df_15m, 50)
+        if len(ema50) < 50:
+            return False
+            
+        # 현재 가격이 50 EMA 위에 있는지 확인
+        return df_15m['close'].iloc[-1] > ema50.iloc[-1]
+        
+    def check_rsi_conditions(self, df: pd.DataFrame, period: int = 14, oversold: float = 30) -> bool:
+        """
+        RSI 과매도 조건 확인 (2캔들 연속)
+        
+        Args:
+            df (pd.DataFrame): 캔들 데이터프레임
+            period (int): RSI 계산 기간
+            oversold (float): 과매도 기준값
+            
+        Returns:
+            bool: 과매도 조건 충족 여부
+        """
+        rsi = ta.momentum.rsi(df['close'], window=period)
+        if len(rsi) < 2:
+            return False
+            
+        # 최근 2개 캔들의 RSI가 모두 과매도 구간인지 확인
+        return (rsi.iloc[-2] <= oversold) and (rsi.iloc[-1] <= oversold)
+        
+    def check_bollinger_conditions(self, df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> bool:
+        """
+        볼린저 밴드 하단 이탈 확인
+        
+        Args:
+            df (pd.DataFrame): 캔들 데이터프레임
+            period (int): 볼린저 밴드 기간
+            std_dev (float): 표준편차 승수
+            
+        Returns:
+            bool: 하단 이탈 여부
+        """
+        bb = ta.volatility.BollingerBands(
+            df['close'], 
+            window=period, 
+            window_dev=std_dev
+        )
+        lower_band = bb.bollinger_lband()
+        
+        # 종가가 하단밴드 아래에 있는지 확인
+        return df['close'].iloc[-1] < lower_band.iloc[-1]
+        
+    def check_volume_surge(self, df: pd.DataFrame, period: int = 20, surge_ratio: float = 2.0) -> bool:
+        """
+        거래량 급증 여부 확인
+        
+        Args:
+            df (pd.DataFrame): 캔들 데이터프레임
+            period (int): 이동평균 기간
+            surge_ratio (float): 급증 기준 배수
+            
+        Returns:
+            bool: 거래량 급증 여부
+        """
+        volume_ma = df['volume'].rolling(window=period).mean()
+        if len(volume_ma) < period:
+            return False
+            
+        # 현재 거래량이 이동평균의 surge_ratio배 이상인지 확인
+        return df['volume'].iloc[-1] >= (volume_ma.iloc[-1] * surge_ratio) 

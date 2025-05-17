@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Bot Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Trading Bot Dashboard</h1>
+            <div class="balance-info">
+                <h2>현재 잔고: <span id="current-balance">0</span> KRW</h2>
+                <h3>실시간 수익: <span id="current-profit">0</span> KRW (<span id="profit-percentage">0</span>%)</h3>
+            </div>
+        </header>
+
+        <!-- 보유 코인 섹션 -->
+        <section class="holdings-section card">
+            <div class="card-header">
+                <h2>보유 코인</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table id="holdings-table" class="table">
+                        <thead>
+                            <tr>
+                                <th>코인</th>
+                                <th>현재가</th>
+                                <th>평단가</th>
+                                <th>수량</th>
+                                <th>총액</th>
+                                <th>수익률</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody id="holdings-body">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 모니터링 중인 코인 섹션 -->
+        <section class="monitoring-section card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h2 class="mb-0">모니터링 중인 코인</h2>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="refreshMonitoring">
+                        <i class="fas fa-sync-alt"></i> 새로고침
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="monitoring-table" class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>코인</th>
+                                <th>현재가</th>
+                                <th class="text-center">RSI<br>과매도</th>
+                                <th class="text-center">볼린저<br>밴드</th>
+                                <th class="text-center">골든<br>크로스</th>
+                                <th class="text-center">거래량<br>급증</th>
+                                <th class="text-center">매수<br>신호</th>
+                                <th>상태</th>
+                                <th class="text-center">매수</th>
+                            </tr>
+                        </thead>
+                        <tbody id="monitoring-body">
+                            <tr>
+                                <td colspan="9" class="text-center">데이터를 불러오는 중...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- 봇 상태 섹션 -->
+        <section class="bot-status-section card mb-4">
+            <div class="card-header">
+                <h2 class="mb-0">봇 상태</h2>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="status-item">
+                            <h5>실행 상태</h5>
+                            <p id="bot-status">
+                                <span class="badge bg-secondary">중지됨</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="status-item">
+                            <h5>마지막 업데이트</h5>
+                            <p id="last-update">-</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="status-item">
+                            <h5>시장 상태</h5>
+                            <p id="market-status">-</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="d-flex justify-content-center">
+                            <button id="start-bot" class="btn btn-success me-2">
+                                <i class="fas fa-play"></i> 시작
+                            </button>
+                            <button id="stop-bot" class="btn btn-danger" disabled>
+                                <i class="fas fa-stop"></i> 중지
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 매수 확인 모달 -->
+        <div class="modal fade" id="buyModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">코인 매수</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>선택한 코인: <strong id="selectedCoin"></strong></p>
+                        <p>현재가: <strong id="currentPrice"></strong></p>
+                        <div class="mb-3">
+                            <label for="buyAmount" class="form-label">매수 금액</label>
+                            <input type="number" class="form-control" id="buyAmount" 
+                                   min="5000" step="1000" value="10000">
+                            <div class="form-text">최소 매수 금액: 5,000원</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                        <button type="button" class="btn btn-primary" id="confirmBuy">매수</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+</body>
+</html> 

@@ -1,0 +1,19 @@
+# Python 관련
+__pycache__/
+*.py[cod]
+*.log
+
+# 가상환경
+venv/
+
+# 환경변수
+.env
+
+# VSCode 설정
+.vscode/
+
+# 로그
+logs/
+
+# 기타
+*.sqlite3

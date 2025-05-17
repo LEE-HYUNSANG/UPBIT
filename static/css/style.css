@@ -1,0 +1,935 @@
+:root {
+    --primary-bg: #ffffff;
+    --secondary-bg: #f8f9fa;
+    --header-bg: #343a40;
+    --card-header-bg: #495057;
+    --text-color: #212529;
+    --border-color: #dee2e6;
+    --hover-color: #e9ecef;
+    --active-color: #e9ecef;
+    --primary-button: #4CAF50;
+    --primary-button-hover: #45a049;
+    --danger-button: #dc3545;
+    --danger-button-hover: #bb2d3b;
+    --success-color: #4CAF50;
+    --card-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    --muted-text: #6c757d;
+    --primary-color: #2C3E50;
+    --secondary-color: #34495E;
+    --accent-color: #3498DB;
+    --background-color: #F8F9FA;
+    --card-background: #FFFFFF;
+    --text-primary: #2C3E50;
+    --text-secondary: #7F8C8D;
+    --warning-color: #F1C40F;
+    --danger-color: #E74C3C;
+    --border-radius: 8px;
+    --transition-speed: 0.3s;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Noto Sans KR', sans-serif;
+    line-height: 1.6;
+    color: var(--text-color);
+    background-color: var(--bg-color);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.navbar {
+    background-color: var(--header-bg) !important;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.75rem 1rem;
+}
+
+.navbar-brand {
+    color: #ffffff !important;
+    font-size: 1.2rem;
+    font-weight: 500;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.8) !important;
+    padding: 0.5rem 1rem;
+    transition: color 0.15s ease-in-out;
+}
+
+.nav-link:hover {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.active {
+    color: #ffffff !important;
+    background-color: rgba(255, 255, 255, 0.2);
+    font-weight: 500;
+}
+
+.card {
+    margin-bottom: 30px;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background-color: #343a40;
+    padding: 15px 20px;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0 !important;
+}
+
+.card-header h2 {
+    margin: 0;
+    color: #fff;
+    font-size: 18px;
+}
+
+.card-body {
+    padding: 20px;
+}
+
+.form-control {
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+}
+
+.form-control:focus {
+    background-color: var(--primary-bg);
+    border-color: var(--primary-button);
+    color: var(--text-color);
+    box-shadow: 0 0 0 0.2rem rgba(76, 175, 80, 0.25);
+}
+
+.form-check-input {
+    background-color: var(--primary-bg);
+    border-color: var(--border-color);
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-button);
+    border-color: var(--primary-button);
+}
+
+.form-label {
+    color: var(--text-color);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: #1557b0;
+}
+
+.btn-success {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+    color: #ffffff;
+}
+
+.btn-success:hover {
+    background-color: var(--primary-button-hover);
+    border-color: var(--primary-button-hover);
+}
+
+.btn-danger {
+    background-color: var(--danger-color);
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: #c82333;
+}
+
+.settings-title {
+    color: var(--text-color);
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    background-color: var(--card-header-bg);
+    color: #ffffff;
+    border-radius: 4px;
+}
+
+.section-header {
+    background-color: var(--card-header-bg);
+    color: #ffffff;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 1.1rem;
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+.table {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    color: #495057;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+    color: #212529;
+}
+
+.badge {
+    padding: 0.5em 1em;
+    font-weight: 500;
+    border-radius: 4px;
+}
+
+.badge.bg-secondary {
+    background-color: var(--muted-text) !important;
+}
+
+.loading {
+    color: var(--muted-text);
+    font-style: italic;
+}
+
+.status-active {
+    background-color: var(--success-color);
+    color: #ffffff;
+}
+
+.chart-container {
+    background-color: #ffffff;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 1rem;
+}
+
+.disabled-settings {
+    opacity: 0.6;
+    pointer-events: none;
+    background-color: var(--secondary-bg);
+}
+
+.alert-custom {
+    background-color: var(--secondary-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 4px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.profit {
+    color: var(--success-color);
+    font-weight: 500;
+}
+
+.loss {
+    color: var(--danger-button);
+    font-weight: 500;
+}
+
+.loading-text {
+    color: var(--muted-text);
+    font-style: italic;
+}
+
+/* 카드 스타일 */
+.card:hover {
+    transform: translateY(-2px);
+}
+
+.card-title {
+    color: #333;
+    font-weight: 600;
+}
+
+/* 테이블 스타일 */
+.table {
+    margin-bottom: 0;
+    background-color: white;
+    border-radius: 0.25rem;
+}
+
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 500;
+}
+
+/* 배지 스타일 */
+.badge {
+    font-size: 0.875rem;
+    padding: 0.5em 0.75em;
+}
+
+/* 폼 스타일 */
+.form-label {
+    font-weight: 500;
+    color: #495057;
+}
+
+.form-control {
+    border-radius: 0.25rem;
+}
+
+.form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* 스위치 스타일 */
+.form-switch .form-check-input {
+    width: 2.5em;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #198754;
+    border-color: #198754;
+}
+
+/* 알림 설정 스타일 */
+.notification-settings .form-check {
+    margin-bottom: 1rem;
+}
+
+.notification-settings .text-muted {
+    font-size: 0.875rem;
+    margin-left: 2.5rem;
+}
+
+/* 시장 상황 */
+#market-status {
+    font-size: 0.95rem;
+}
+
+#market-status span:first-child {
+    color: #6c757d;
+}
+
+#market-status span:last-child {
+    font-weight: 500;
+}
+
+.positive-change {
+    color: #28a745;
+}
+
+.negative-change {
+    color: #dc3545;
+}
+
+/* 거래 목록 */
+.trade-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.trade-item {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.trade-item:last-child {
+    border-bottom: none;
+}
+
+/* 지표 카드 */
+.metric-card {
+    text-align: center;
+    padding: 15px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 0 15px rgba(0,0,0,.05);
+}
+
+.metric-card h6 {
+    color: #666;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.metric-card h3 {
+    color: #2c3e50;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* 상태 색상 */
+.status-bull {
+    color: #2ecc71;
+}
+
+.status-bear {
+    color: #e74c3c;
+}
+
+.status-neutral {
+    color: #f1c40f;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .container {
+        padding: 0;
+    }
+    
+    .card {
+        margin-bottom: 20px;
+    }
+    
+    .metric-card {
+        margin-bottom: 10px;
+    }
+    
+    .table td, .table th {
+        padding: 8px;
+        font-size: 14px;
+    }
+    
+    .status-badge {
+        padding: 2px 6px;
+        font-size: 11px;
+    }
+}
+
+/* 수치 업데이트 애니메이션 */
+@keyframes update-flash {
+    0% {
+        background-color: rgba(255, 255, 0, 0.2);
+    }
+    100% {
+        background-color: transparent;
+    }
+}
+
+.update-flash {
+    animation: update-flash 1s ease-out;
+}
+
+/* 알림 스타일 */
+.alert {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    min-width: 300px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    animation: slide-in 0.3s ease-out;
+}
+
+@keyframes slide-in {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 로딩 스피너 */
+.loading-spinner {
+    display: inline-block;
+    width: 1rem;
+    height: 1rem;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #007bff;
+    border-radius: 50%;
+    animation: spinner 1s linear infinite;
+}
+
+@keyframes spinner {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 대시보드 스타일 */
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+h1 {
+    font-size: 24px;
+    color: var(--primary-color);
+}
+
+.balance-info {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid #dee2e6;
+}
+
+.balance-info h2, .balance-info h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #495057;
+}
+
+.holdings-section, .monitoring-section {
+    background-color: white;
+    border-radius: 5px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+th {
+    background-color: #f8f9fa;
+    font-weight: bold;
+}
+
+tr:hover {
+    background-color: #f5f5f5;
+}
+
+.profit {
+    color: #28a745;
+}
+
+.loss {
+    color: #dc3545;
+}
+
+/* 매수/매도 신호 스타일 */
+.buy-signal {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.sell-signal {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* 테이블 헤더 스타일 개선 */
+#monitoring-table th {
+    text-align: center;
+    vertical-align: middle;
+    background-color: #343a40;
+    color: white;
+    padding: 12px 8px;
+    font-size: 0.9rem;
+    line-height: 1.2;
+}
+
+#monitoring-table td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 12px 8px;
+}
+
+/* 보유 코인과 모니터링 섹션 간격 */
+.holdings-section {
+    margin-bottom: 2rem;
+}
+
+/* 잔고 정보 스타일 */
+.balance-info {
+    background-color: #343a40;
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.balance-info h2, .balance-info h3 {
+    margin: 0;
+    padding: 5px 0;
+}
+
+.balance-info .profit {
+    color: #28a745;
+}
+
+.balance-info .loss {
+    color: #dc3545;
+}
+
+/* 섹션 헤더 스타일 */
+section h2 {
+    color: #343a40;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+/* 상태 배지 */
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-profit {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-small-loss {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-loss {
+    background-color: #f8d7da;
+    color: #721c24;
+}
+
+/* 텍스트 색상 */
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+/* 설정 페이지 스타일 */
+.settings-container {
+    max-width: 1800px;
+    margin: 2rem auto;
+    padding: 0 2rem;
+}
+
+.settings-section {
+    background-color: var(--card-background);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    transition: all var(--transition-speed) ease;
+}
+
+.settings-section:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.settings-title {
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--accent-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* 조건 그룹 스타일 */
+.condition-group {
+    position: relative;
+    padding: 1.25rem;
+    background-color: #F8FAFC;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border: 1px solid #E2E8F0;
+    transition: all var(--transition-speed) ease;
+}
+
+.condition-group:hover {
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+/* 도움말 아이콘 스타일 */
+.help-icon {
+    color: var(--accent-color);
+    font-size: 1.1rem;
+    margin-left: 0.5rem;
+    cursor: help;
+    transition: color var(--transition-speed) ease;
+}
+
+.help-icon:hover {
+    color: var(--primary-color);
+}
+
+/* 툴팁 스타일 */
+.tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+    padding: 10px;
+    background-color: var(--secondary-color);
+    font-size: 0.9rem;
+    line-height: 1.4;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* 폼 요소 스타일 */
+.form-control {
+    border: 1px solid #E2E8F0;
+    border-radius: var(--border-radius);
+    padding: 0.625rem 1rem;
+    height: calc(2.5rem + 2px);
+    font-size: 0.95rem;
+    transition: all var(--transition-speed) ease;
+}
+
+.form-control:focus {
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+}
+
+.form-label {
+    font-weight: 500;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+/* 스위치 토글 스타일 */
+.form-switch .form-check-input {
+    width: 3em;
+    height: 1.5em;
+    margin-right: 0.5rem;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: var(--success-color);
+    border-color: var(--success-color);
+}
+
+/* 저장 버튼 스타일 */
+.btn-primary {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+    padding: 0.75rem 2rem;
+    font-weight: 500;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-speed) ease;
+}
+
+.btn-primary:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 1600px) {
+    .settings-container {
+        max-width: 1400px;
+    }
+}
+
+@media (max-width: 1200px) {
+    .settings-container {
+        max-width: 1000px;
+    }
+}
+
+@media (max-width: 768px) {
+    .settings-container {
+        padding: 0 1rem;
+    }
+    
+    .settings-section {
+        padding: 1rem;
+    }
+    
+    .condition-group {
+        padding: 1rem;
+    }
+}
+
+/* 상태 표시 스타일 */
+.status-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-right: 20px;
+}
+
+.status-running {
+    color: var(--success-color);
+    font-weight: bold;
+}
+
+.status-stopped {
+    color: var(--danger-color);
+    font-weight: bold;
+}
+
+/* 시장 분석 섹션 */
+.market-analysis {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.market-condition {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.market-condition h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.coin-list-wrapper {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.coin-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.coin-item {
+    background: var(--bg-color);
+    padding: 15px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+}
+
+.coin-item h4 {
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.coin-item p {
+    margin: 5px 0;
+    font-size: 14px;
+}
+
+/* 알림 메시지 스타일 */
+.error-message, .success-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 4px;
+    color: white;
+    animation: slideIn 0.3s ease-out;
+    z-index: 1000;
+}
+
+.error-message {
+    background-color: var(--danger-color);
+}
+
+.success-message {
+    background-color: var(--success-color);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* 보유 자산 섹션 */
+.holdings {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.holdings h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 768px) {
+    .market-analysis {
+        grid-template-columns: 1fr;
+    }
+    
+    header {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+    
+    .bot-controls {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+} 

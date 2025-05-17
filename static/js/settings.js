@@ -1,0 +1,571 @@
+// DOM 요소
+const tradingSettingsForm = document.getElementById('trading-settings-form');
+const signalSettingsForm = document.getElementById('signal-settings-form');
+const notificationSettingsForm = document.getElementById('notification-settings-form');
+const saveButton = document.getElementById('save-settings');
+const settingsForm = document.getElementById('settings-form');
+const alertModal = new bootstrap.Modal(document.getElementById('alertModal'));
+const alertMessage = document.getElementById('alertMessage');
+
+let excludedCoins = [];
+let currentSettings = {};
+
+// 추천 설정값
+const recommendedSettings = {
+    trading: {
+        enabled: false,  // 실제 매매 실행 여부
+        investment_amount: 10000,    // 1만원 단위 테스트 추천
+        max_coins: 8,               // 동시 보유 최대 8개 코인
+        coin_selection: {
+            min_price: 100,         // 최소 100원
+            max_price: 500000,      // 최대 50만원
+            top_volume_count: 30,    // 상위 30개 거래량
+            excluded_coins: [],
+            buy_price_type: 'market',    // 매수가 설정 (market/limit/under)
+            sell_price_type: 'market'    // 매도가 설정 (market/limit/over)
+        }
+    },
+    signals: {
+        enabled: false,  // 시장 자동감지 OFF
+        buy_conditions: {
+            bull: {
+                rsi: 40,
+                sigma: 1.8,
+                vol_prev: 1.5,
+                vol_ma: 1.2,
+                slope: 0.12
+            },
+            range: {
+                rsi: 35,
+                sigma: 2.0,
+                vol_prev: 2.0,
+                vol_ma: 1.5,
+                slope: 0.10
+            },
+            bear: {
+                rsi: 30,
+                sigma: 2.2,
+                vol_prev: 2.5,
+                vol_ma: 1.8,
+                slope: 0.08
+            },
+            enabled: {
+                trend_filter: true,    // 15분 추세 필터
+                golden_cross: true,    // SMA 5/20 골든크로스
+                rsi: true,            // RSI 과매도 2캔들 연속
+                bollinger: true,       // 볼린저 밴드 하단선 이탈
+                volume_surge: true     // 거래량 급증
+            }
+        },
+        sell_conditions: {
+            stop_loss: {
+                enabled: true,
+                threshold: -2.5,       // 고정 손절 -2.5%
+                trailing_stop: 0.5     // 추적 손절 0.5%
+            },
+            take_profit: {
+                enabled: true,
+                threshold: 2.0,        // 목표 수익 2.0%
+                trailing_profit: 1.0    // 추적 익절 1.0%
+            },
+            dead_cross: {
+                enabled: true          // SMA 5/20 데드크로스 & 기울기 ≤ -0.1
+            },
+            rsi: {
+                enabled: true,
+                threshold: 60          // RSI ≥ 60 2캔들 연속
+            },
+            bollinger: {
+                enabled: true          // BB(20, 2.0) 상단선 돌파
+            }
+        }
+    },
+    notifications: {
+        trade: {
+            start: true,
+            complete: true,
+            profit_loss: true
+        },
+        system: {
+            error: true,
+            daily_summary: true,
+            signal: true
+        }
+    }
+};
+
+// Socket.IO 초기화
+const socket = io();
+
+// DOM 요소
+const excludedCoinInput = document.getElementById('excluded-coin-input');
+const excludedCoinsList = document.getElementById('excluded-coins-list');
+
+// 페이지 로드 시 실행
+document.addEventListener('DOMContentLoaded', () => {
+    // 초기 설정 로드
+    loadSettings();
+
+    // 제외 코인 입력 이벤트
+    excludedCoinInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            addExcludedCoin();
+        }
+    });
+
+    // 설정값 변경 이벤트 리스너
+    document.querySelectorAll('input').forEach(input => {
+        input.addEventListener('change', () => {
+            markSettingsAsChanged();
+        });
+    });
+
+    // 매수가/매도가 설정 변경 이벤트
+    document.querySelectorAll('input[name="buy_price_type"], input[name="sell_price_type"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            markSettingsAsChanged();
+        });
+    });
+});
+
+// 제외 코인 추가
+function addExcludedCoin() {
+    const input = document.getElementById('excluded-coin-input');
+    const coin = input.value.trim().toUpperCase();
+    
+    if (!coin) {
+        showNotification('코인 심볼을 입력해주세요.', 'error');
+        return;
+    }
+    
+    if (!coin.startsWith('KRW-')) {
+        showNotification('코인 심볼은 KRW-로 시작해야 합니다.', 'error');
+        return;
+    }
+    
+    if (excludedCoins.includes(coin)) {
+        showNotification('이미 제외 목록에 있는 코인입니다.', 'error');
+        return;
+    }
+    
+    excludedCoins.push(coin);
+    updateExcludedCoinsList(excludedCoins);
+    input.value = '';
+    markSettingsAsChanged();
+}
+
+// 제외 코인 제거
+function removeExcludedCoin(coin) {
+    excludedCoins = excludedCoins.filter(c => c !== coin);
+    updateExcludedCoinsList(excludedCoins);
+    markSettingsAsChanged();
+}
+
+// 제외 코인 목록 업데이트
+function updateExcludedCoinsList(coins) {
+    excludedCoins = coins;
+    const list = document.getElementById('excluded-coins-list');
+    list.innerHTML = '';
+    
+    coins.forEach(coin => {
+        const li = document.createElement('li');
+        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+        li.innerHTML = `
+            ${coin}
+            <button class="btn btn-sm btn-danger" onclick="removeExcludedCoin('${coin}')">
+                <i class="bi bi-x"></i>
+            </button>
+        `;
+        list.appendChild(li);
+    });
+}
+
+// 설정 변경 표시
+function markSettingsAsChanged() {
+    const saveButton = document.querySelector('button.btn-primary');
+    if (saveButton) {
+        saveButton.classList.add('btn-warning');
+        saveButton.classList.remove('btn-primary');
+    }
+}
+
+// 설정 로드
+function loadSettings() {
+    fetch('/api/settings')
+        .then(response => response.json())
+        .then(settings => {
+            currentSettings = settings;
+            updateFormValues(settings);
+            updateExcludedCoinsList(settings.trading?.coin_selection?.excluded_coins || []);
+        })
+        .catch(error => {
+            console.error('설정을 불러오는 중 오류가 발생했습니다:', error);
+            showNotification('설정을 불러오는 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+// 폼 값 업데이트
+function updateFormValues(settings) {
+    // 기본 설정
+    setValue('trading.investment_amount', settings.trading?.investment_amount);
+    setValue('trading.max_coins', settings.trading?.max_coins);
+    setValue('trading.min_price', settings.trading?.coin_selection?.min_price);
+    setValue('trading.max_price', settings.trading?.coin_selection?.max_price);
+    setValue('trading.top_volume_count', settings.trading?.coin_selection?.top_volume_count);
+
+    // 매수가 설정
+    const buyPriceType = settings.trading?.buy_price_type || 'market';
+    document.querySelector(`input[name="buy_price_type"][value="${buyPriceType}"]`).checked = true;
+
+    // 매도가 설정
+    const sellPriceType = settings.trading?.sell_price_type || 'market';
+    document.querySelector(`input[name="sell_price_type"][value="${sellPriceType}"]`).checked = true;
+
+    // 매수 지표 설정
+    const buyConditions = settings.signals?.buy_conditions || {};
+    
+    // 상승장 설정
+    setValue('signals.buy_conditions.bull.rsi', buyConditions.bull?.rsi);
+    setValue('signals.buy_conditions.bull.sigma', buyConditions.bull?.sigma);
+    setValue('signals.buy_conditions.bull.vol_prev', buyConditions.bull?.vol_prev);
+    setValue('signals.buy_conditions.bull.vol_ma', buyConditions.bull?.vol_ma);
+    setValue('signals.buy_conditions.bull.slope', buyConditions.bull?.slope);
+
+    // 박스장 설정
+    setValue('signals.buy_conditions.range.rsi', buyConditions.range?.rsi);
+    setValue('signals.buy_conditions.range.sigma', buyConditions.range?.sigma);
+    setValue('signals.buy_conditions.range.vol_prev', buyConditions.range?.vol_prev);
+    setValue('signals.buy_conditions.range.vol_ma', buyConditions.range?.vol_ma);
+    setValue('signals.buy_conditions.range.slope', buyConditions.range?.slope);
+
+    // 하락장 설정
+    setValue('signals.buy_conditions.bear.rsi', buyConditions.bear?.rsi);
+    setValue('signals.buy_conditions.bear.sigma', buyConditions.bear?.sigma);
+    setValue('signals.buy_conditions.bear.vol_prev', buyConditions.bear?.vol_prev);
+    setValue('signals.buy_conditions.bear.vol_ma', buyConditions.bear?.vol_ma);
+    setValue('signals.buy_conditions.bear.slope', buyConditions.bear?.slope);
+
+    // 매수 조건 토글
+    setValue('signals.buy_conditions.enabled.trend_filter', buyConditions.enabled?.trend_filter);
+    setValue('signals.buy_conditions.enabled.golden_cross', buyConditions.enabled?.golden_cross);
+    setValue('signals.buy_conditions.enabled.rsi', buyConditions.enabled?.rsi);
+    setValue('signals.buy_conditions.enabled.bollinger', buyConditions.enabled?.bollinger);
+    setValue('signals.buy_conditions.enabled.volume_surge', buyConditions.enabled?.volume_surge);
+
+    // 매도 조건 설정
+    const sellConditions = settings.signals?.sell_conditions || {};
+    
+    // 손절매 설정
+    setValue('signals.sell_conditions.stop_loss.enabled', sellConditions.stop_loss?.enabled);
+    setValue('signals.sell_conditions.stop_loss.threshold', sellConditions.stop_loss?.threshold);
+    setValue('signals.sell_conditions.stop_loss.trailing_stop', sellConditions.stop_loss?.trailing_stop);
+    
+    // 익절 설정
+    setValue('signals.sell_conditions.take_profit.enabled', sellConditions.take_profit?.enabled);
+    setValue('signals.sell_conditions.take_profit.threshold', sellConditions.take_profit?.threshold);
+    setValue('signals.sell_conditions.take_profit.trailing_profit', sellConditions.take_profit?.trailing_profit);
+    
+    // 기타 매도 조건
+    setValue('signals.sell_conditions.dead_cross.enabled', sellConditions.dead_cross?.enabled);
+    setValue('signals.sell_conditions.rsi.enabled', sellConditions.rsi?.enabled);
+    setValue('signals.sell_conditions.rsi.threshold', sellConditions.rsi?.threshold);
+    setValue('signals.sell_conditions.bollinger.enabled', sellConditions.bollinger?.enabled);
+
+    // 알림 설정
+    const notifications = settings.notifications || {};
+    setValue('notifications.trade.start', notifications.trade?.start);
+    setValue('notifications.trade.complete', notifications.trade?.complete);
+    setValue('notifications.trade.profit_loss', notifications.trade?.profit_loss);
+    
+    setValue('notifications.system.error', notifications.system?.error);
+    setValue('notifications.system.daily_summary', notifications.system?.daily_summary);
+    setValue('notifications.system.signal', notifications.system?.signal);
+}
+
+// 설정 저장
+function saveSettings() {
+    const settings = {
+        trading: {
+            investment_amount: getNumberValue('trading.investment_amount'),
+            max_coins: getNumberValue('trading.max_coins'),
+            coin_selection: {
+                min_price: getNumberValue('trading.min_price'),
+                max_price: getNumberValue('trading.max_price'),
+                top_volume_count: getNumberValue('trading.top_volume_count'),
+                excluded_coins: excludedCoins,
+                buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value,
+                sell_price_type: document.querySelector('input[name="sell_price_type"]:checked').value
+            }
+        },
+        signals: {
+            buy_conditions: {
+                bull: {
+                    rsi: getNumberValue('signals.buy_conditions.bull.rsi'),
+                    sigma: getNumberValue('signals.buy_conditions.bull.sigma'),
+                    vol_prev: getNumberValue('signals.buy_conditions.bull.vol_prev'),
+                    vol_ma: getNumberValue('signals.buy_conditions.bull.vol_ma'),
+                    slope: getNumberValue('signals.buy_conditions.bull.slope')
+                },
+                range: {
+                    rsi: getNumberValue('signals.buy_conditions.range.rsi'),
+                    sigma: getNumberValue('signals.buy_conditions.range.sigma'),
+                    vol_prev: getNumberValue('signals.buy_conditions.range.vol_prev'),
+                    vol_ma: getNumberValue('signals.buy_conditions.range.vol_ma'),
+                    slope: getNumberValue('signals.buy_conditions.range.slope')
+                },
+                bear: {
+                    rsi: getNumberValue('signals.buy_conditions.bear.rsi'),
+                    sigma: getNumberValue('signals.buy_conditions.bear.sigma'),
+                    vol_prev: getNumberValue('signals.buy_conditions.bear.vol_prev'),
+                    vol_ma: getNumberValue('signals.buy_conditions.bear.vol_ma'),
+                    slope: getNumberValue('signals.buy_conditions.bear.slope')
+                },
+                enabled: {
+                    trend_filter: getBooleanValue('signals.buy_conditions.enabled.trend_filter'),
+                    golden_cross: getBooleanValue('signals.buy_conditions.enabled.golden_cross'),
+                    rsi: getBooleanValue('signals.buy_conditions.enabled.rsi'),
+                    bollinger: getBooleanValue('signals.buy_conditions.enabled.bollinger'),
+                    volume_surge: getBooleanValue('signals.buy_conditions.enabled.volume_surge')
+                }
+            },
+            sell_conditions: {
+                stop_loss: {
+                    enabled: getBooleanValue('signals.sell_conditions.stop_loss.enabled'),
+                    threshold: getNumberValue('signals.sell_conditions.stop_loss.threshold'),
+                    trailing_stop: getNumberValue('signals.sell_conditions.stop_loss.trailing_stop')
+                },
+                take_profit: {
+                    enabled: getBooleanValue('signals.sell_conditions.take_profit.enabled'),
+                    threshold: getNumberValue('signals.sell_conditions.take_profit.threshold'),
+                    trailing_profit: getNumberValue('signals.sell_conditions.take_profit.trailing_profit')
+                },
+                dead_cross: {
+                    enabled: getBooleanValue('signals.sell_conditions.dead_cross.enabled')
+                },
+                rsi: {
+                    enabled: getBooleanValue('signals.sell_conditions.rsi.enabled'),
+                    threshold: getNumberValue('signals.sell_conditions.rsi.threshold')
+                },
+                bollinger: {
+                    enabled: getBooleanValue('signals.sell_conditions.bollinger.enabled')
+                }
+            }
+        },
+        notifications: {
+            trade: {
+                start: getBooleanValue('notifications.trade.start'),
+                complete: getBooleanValue('notifications.trade.complete'),
+                profit_loss: getBooleanValue('notifications.trade.profit_loss')
+            },
+            system: {
+                error: getBooleanValue('notifications.system.error'),
+                daily_summary: getBooleanValue('notifications.system.daily_summary'),
+                signal: getBooleanValue('notifications.system.signal')
+            }
+        }
+    };
+
+    fetch('/api/settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('설정이 저장되었습니다.', 'success');
+            currentSettings = settings;
+            const saveButton = document.querySelector('button.btn-warning');
+            if (saveButton) {
+                saveButton.classList.remove('btn-warning');
+                saveButton.classList.add('btn-primary');
+            }
+        } else {
+            showNotification(data.error || '설정 저장 중 오류가 발생했습니다.', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('설정 저장 중 오류가 발생했습니다.', 'error');
+    });
+}
+
+// 설정 초기화
+function resetSettings() {
+    if (confirm('모든 설정을 초기화하시겠습니까?')) {
+        fetch('/api/settings/reset', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('설정이 초기화되었습니다.', 'success');
+                    loadSettings();
+                } else {
+                    showNotification(data.error || '설정 초기화 중 오류가 발생했습니다.', 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('설정 초기화 중 오류가 발생했습니다.', 'error');
+            });
+    }
+}
+
+// 유틸리티 함수
+function setValue(id, value) {
+    const element = document.getElementById(id);
+    if (element) {
+        if (element.type === 'checkbox') {
+            element.checked = Boolean(value);
+        } else {
+            element.value = value !== undefined ? value : '';
+        }
+    }
+}
+
+function getValue(id) {
+    const element = document.getElementById(id);
+    if (element) {
+        if (element.type === 'checkbox') {
+            return element.checked;
+        } else {
+            return element.value;
+        }
+    }
+    return null;
+}
+
+function getNumberValue(id) {
+    const value = getValue(id);
+    return value !== null ? Number(value) : null;
+}
+
+function getBooleanValue(id) {
+    return getValue(id) === true;
+}
+
+// 알림 표시
+function showNotification(message, type = 'info') {
+    // Bootstrap 알림 생성
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show position-fixed top-0 end-0 m-3`;
+    alert.style.zIndex = '9999';
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    
+    document.body.appendChild(alert);
+    
+    // 3초 후 자동으로 닫기
+    setTimeout(() => {
+        alert.remove();
+    }, 3000);
+}
+
+// Socket.IO 이벤트 리스너
+socket.on('settings_updated', (settings) => {
+    console.log('Settings updated from server');
+    loadSettings();
+});
+
+socket.on('settings_error', (data) => {
+    showNotification(data.message, 'error');
+});
+
+// 에러 메시지 표시
+function showErrorMessage(message) {
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) {
+        errorDiv.textContent = message;
+        errorDiv.style.display = 'block';
+    }
+}
+
+// 성공 메시지 표시
+function showSuccessMessage(message) {
+    const successDiv = document.getElementById('success-message');
+    if (successDiv) {
+        successDiv.textContent = message;
+        successDiv.style.display = 'block';
+        setTimeout(() => {
+            successDiv.style.display = 'none';
+        }, 3000);
+    }
+}
+
+// 에러 메시지 숨기기
+function hideErrorMessage() {
+    const errorDiv = document.getElementById('error-message');
+    if (errorDiv) {
+        errorDiv.style.display = 'none';
+    }
+}
+
+// 섹션 상태 업데이트
+function updateSectionState(toggleId) {
+    const toggle = document.getElementById(toggleId);
+    if (!toggle) return;
+
+    // 자동 거래 활성화 토글 처리
+    if (toggleId === 'trading.enabled') {
+        const tradingSection = document.querySelector('.col-md-3:first-child');
+        const tradingInputs = tradingSection.querySelectorAll('input:not(#trading\\.enabled)');
+        tradingInputs.forEach(input => {
+            input.disabled = !toggle.checked;
+        });
+        return;
+    }
+
+    // 시장 자동감지 토글 처리
+    if (toggleId === 'signals.enabled') {
+        // 2열과 3열의 모든 입력 요소를 찾습니다
+        const signalSections = document.querySelectorAll('.col-md-3:nth-child(2), .col-md-3:nth-child(3)');
+        signalSections.forEach(section => {
+            const inputs = section.querySelectorAll('input, select');
+            inputs.forEach(input => {
+                if (input.id !== 'signals.enabled') {
+                    input.disabled = toggle.checked;  // 자동감지 ON이면 비활성화
+                }
+            });
+        });
+        return;
+    }
+}
+
+// 모든 섹션 상태 업데이트
+function updateAllSectionStates() {
+    // 자동 거래 상태 업데이트
+    updateSectionState('trading.enabled');
+    
+    // 시장 자동감지 상태 업데이트
+    updateSectionState('signals.enabled');
+}
+
+// 이벤트 리스너 설정
+document.addEventListener('DOMContentLoaded', () => {
+    // 저장 버튼 이벤트
+    if (saveButton) {
+        saveButton.addEventListener('click', saveSettings);
+    }
+    
+    // 토글 이벤트
+    const toggles = settingsForm.querySelectorAll('input[type="checkbox"]');
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', () => {
+            updateSectionState(toggle.id);
+        });
+    });
+    
+    // 폼 제출 방지
+    if (settingsForm) {
+        settingsForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+        });
+    }
+    
+    // 초기 상태 업데이트
+    updateAllSectionStates();
+}); 
