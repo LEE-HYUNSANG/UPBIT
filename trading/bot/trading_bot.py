@@ -1,6 +1,6 @@
 import time
 from typing import Dict, List, Optional
-from ..exchange.upbit_exchange import UpbitExchange
+from core.upbit_api import UpbitAPI
 from ..data.market_data import MarketData
 from ..strategies.five_min_strategy import FiveMinStrategy
 from ..utils.logger import TradingLogger
@@ -18,7 +18,7 @@ class TradingBot:
         self.logger = TradingLogger("TradingBot")
         
         # 거래소 인스턴스 초기화
-        self.exchange = UpbitExchange(access_key, secret_key)
+        self.exchange = UpbitAPI(access_key, secret_key)
         
         # 데이터 관리자 초기화
         self.market_data = MarketData(self.exchange, settings)

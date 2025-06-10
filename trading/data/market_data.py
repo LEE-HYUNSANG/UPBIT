@@ -1,15 +1,15 @@
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
-from ..exchange.upbit_exchange import UpbitExchange
+from core.upbit_api import UpbitAPI
 from ..utils.logger import TradingLogger
 
 class MarketData:
-    def __init__(self, exchange: UpbitExchange, settings: Dict):
+    def __init__(self, exchange: UpbitAPI, settings: Dict):
         """
         시장 데이터 관리 클래스
         Args:
-            exchange: UpbitExchange 인스턴스
+            exchange: UpbitAPI 인스턴스
             settings: 설정값 딕셔너리
         """
         self.exchange = exchange

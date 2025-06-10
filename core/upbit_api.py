@@ -22,16 +22,20 @@ from urllib.parse import urlencode
 from dotenv import load_dotenv
 
 class UpbitAPI:
-    def __init__(self):
+    def __init__(self, access_key: str = None, secret_key: str = None):
         """UpbitAPI 클래스 초기화"""
         load_dotenv()
         self.logger = logging.getLogger('UpbitAPI')
-        self.access_key = os.getenv('UPBIT_ACCESS_KEY')
-        self.secret_key = os.getenv('UPBIT_SECRET_KEY')
+        self.access_key = access_key or os.getenv('UPBIT_ACCESS_KEY')
+        self.secret_key = secret_key or os.getenv('UPBIT_SECRET_KEY')
         self.server_url = 'https://api.upbit.com'
-        
+
         if not self.access_key or not self.secret_key:
             self.logger.error("업비트 API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+            self.upbit = None
+        else:
+            import pyupbit
+            self.upbit = pyupbit.Upbit(self.access_key, self.secret_key)
 
         # 시장 분석을 위한 가중치 설정
         self.WEIGHTS = {
@@ -273,4 +277,130 @@ class UpbitAPI:
             return True
         except Exception as e:
             self.logger.error(f"주문 취소 실패: {str(e)}")
-            return False 
+            return False
+
+    # ===== 추가된 편의 기능들 =====
+
+    def get_balance(self, ticker: str = "KRW") -> float:
+        """잔고 조회"""
+        if not self.upbit:
+            return 0.0
+        try:
+            balance = self.upbit.get_balance(ticker)
+            return float(balance) if balance else 0.0
+        except Exception as e:
+            self.logger.error(f"잔고 조회 실패: {str(e)}")
+            return 0.0
+
+    def get_current_price(self, market: str):
+        """현재가 조회"""
+        try:
+            import pyupbit
+            price = pyupbit.get_current_price(market)
+            return float(price) if price else None
+        except Exception as e:
+            self.logger.error(f"현재가 조회 실패: {str(e)}")
+            return None
+
+    def get_ohlcv(self, market: str, interval: str, count: int):
+        """OHLCV 데이터 조회"""
+        try:
+            import pyupbit
+            df = pyupbit.get_ohlcv(market, interval=interval, count=count)
+            return df
+        except Exception as e:
+            self.logger.error(f"OHLCV 조회 실패: {str(e)}")
+            return None
+
+    def buy_market_order(self, market: str, price: float):
+        """시장가 매수"""
+        if not self.upbit:
+            return None
+        try:
+            order = self.upbit.buy_market_order(market, price)
+            if order and 'error' not in order:
+                return order
+            self.logger.error(f"시장가 매수 실패: {order.get('error', {}).get('message', '')}")
+            return None
+        except Exception as e:
+            self.logger.error(f"시장가 매수 실패: {str(e)}")
+            return None
+
+    def sell_market_order(self, market: str, volume: float):
+        """시장가 매도"""
+        if not self.upbit:
+            return None
+        try:
+            order = self.upbit.sell_market_order(market, volume)
+            if order and 'error' not in order:
+                return order
+            self.logger.error(f"시장가 매도 실패: {order.get('error', {}).get('message', '')}")
+            return None
+        except Exception as e:
+            self.logger.error(f"시장가 매도 실패: {str(e)}")
+            return None
+
+    def get_order_info(self, uuid: str):
+        """주문 정보 조회"""
+        if not self.upbit:
+            return None
+        try:
+            return self.upbit.get_order(uuid)
+        except Exception as e:
+            self.logger.error(f"주문 정보 조회 실패: {str(e)}")
+            return None
+
+    def get_top_volume_tickers(self, base: str = "KRW", count: int = 100):
+        """거래량 상위 티커 조회"""
+        try:
+            import pyupbit
+            tickers = pyupbit.get_tickers(fiat=base)
+            volumes = []
+            for ticker in tickers:
+                current_price = self.get_current_price(ticker)
+                if not current_price:
+                    continue
+                daily = self.get_ohlcv(ticker, "day", 1)
+                if daily is None or daily.empty:
+                    continue
+                volume = daily['volume'].iloc[-1] * current_price
+                volumes.append((ticker, volume))
+            volumes.sort(key=lambda x: x[1], reverse=True)
+            return [v[0] for v in volumes[:count]]
+        except Exception as e:
+            self.logger.error(f"거래량 상위 티커 조회 실패: {str(e)}")
+            return []
+
+    def get_investable_tickers(self, min_price: float, max_price: float):
+        """투자 가능한 티커 조회"""
+        try:
+            import pyupbit
+            tickers = pyupbit.get_tickers(fiat="KRW")
+            investable = []
+            for ticker in tickers:
+                price = self.get_current_price(ticker)
+                if price and min_price <= price <= max_price:
+                    investable.append(ticker)
+            return investable
+        except Exception as e:
+            self.logger.error(f"투자 가능 티커 조회 실패: {str(e)}")
+            return []
+
+    def send_request(self, method: str, url: str, params: dict = None):
+        """직접 API 요청"""
+        try:
+            method = method.upper()
+            headers = self._get_token(params)
+            if method == 'GET':
+                response = requests.get(url, headers=headers, params=params)
+            elif method == 'POST':
+                response = requests.post(url, headers=headers, json=params)
+            elif method == 'DELETE':
+                response = requests.delete(url, headers=headers, json=params)
+            else:
+                return None
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            self.logger.error(f"API 요청 실패: {str(e)}")
+            return None
