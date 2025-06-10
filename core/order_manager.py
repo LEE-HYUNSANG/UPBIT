@@ -308,11 +308,19 @@ class OrderManager:
             logger.info(f"{market}: 1차 지정가 매수 체결 - uuid={order['uuid']}")
             return True, order
 
+        if isinstance(order, dict) and order.get('error') == '호가 정보 조회 실패':
+            logger.error(f"{market}: 호가 정보 조회 실패로 매수 포기")
+            return False, order
+
         if second_wait > 0:
             success, order = self._place_limit_order(market, amount, second_type, second_wait)
             if success:
                 logger.info(f"{market}: 2차 지정가 매수 체결 - uuid={order['uuid']}")
                 return True, order
+
+            if isinstance(order, dict) and order.get('error') == '호가 정보 조회 실패':
+                logger.error(f"{market}: 호가 정보 조회 실패로 매수 포기")
+                return False, order
 
         logger.info(f"{market}: 지정가 매수 실패, 시장가 매수 시도")
         market_order = self.api.place_order(
