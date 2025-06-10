@@ -48,7 +48,8 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 import logging
-from config.default_settings import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
+from config.order_defaults import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
+from config.default_settings import DEFAULT_SETTINGS
 
 # 로깅 설정
 logging.basicConfig(
@@ -122,138 +123,8 @@ class Config:
        - 시스템 관련: 에러, 일일 요약, 신호
     """
     
-    # 기본 설정값
-    DEFAULT_CONFIG = {
-        "version": "1.0.0",
-        "trading": {
-            "enabled": True,
-            "investment_amount": 200000,
-            "max_coins": 5,
-            "coin_selection": {
-                "min_price": 700,
-                "max_price": 26666,
-                "min_volume_24h": 1400000000,
-                "min_volume_1h": 30000000,
-                "min_tick_ratio": 0.035
-            }
-        },
-        "signals": {
-            "enabled": True,
-            "common_conditions": {
-                "enabled": True,
-                "rsi": {
-                    "enabled": True,
-                    "period": 14
-                },
-                "bollinger": {
-                    "enabled": True,
-                    "period": 20,
-                    "k": 2.0
-                },
-                "volume_ma": {
-                    "enabled": True,
-                    "period": 5
-                }
-            },
-            "buy_conditions": {
-                "enabled": True,
-                "rsi": {
-                    "enabled": True,
-                    "threshold": 30
-                },
-                "golden_cross": {
-                    "enabled": True,
-                    "short_period": 5,
-                    "long_period": 20
-                },
-                "bollinger": {
-                    "enabled": True,
-                    "threshold": -2
-                }
-            },
-            "sell_conditions": {
-                "enabled": True,
-                "stop_loss": {
-                    "enabled": True,
-                    "threshold": 3.0
-                },
-                "take_profit": {
-                    "enabled": True,
-                    "threshold": 5.0
-                },
-                "rsi": {
-                    "enabled": True,
-                    "threshold": 70
-                },
-                "dead_cross": {
-                    "enabled": True,
-                    "short_period": 5,
-                    "long_period": 20
-                },
-                "bollinger": {
-                    "enabled": True,
-                    "threshold": 2
-                }
-            }
-        },
-        "notifications": {
-            "trade": {
-                "start": True,
-                "complete": True,
-                "profit_loss": True
-            },
-            "system": {
-                "error": True,
-                "daily_summary": True,
-                "signal": True
-            }
-        },
-        "buy_score": {
-            "strength_weight": 2,
-            "strength_threshold_low": 110,
-            "strength_threshold": 130,
-            "volume_spike_weight": 2,
-            "volume_spike_threshold_low": 150,
-            "volume_spike_threshold": 200,
-            "orderbook_weight": 1,
-            "orderbook_threshold": 130,
-            "momentum_weight": 1,
-            "momentum_threshold": 0.3,
-            "near_high_weight": 1,
-            "near_high_threshold": -1,
-            "trend_reversal_weight": 1,
-            "williams_weight": 1,
-            "williams_enabled": True,
-            "stochastic_weight": 1,
-            "stochastic_enabled": True,
-            "macd_weight": 1,
-            "macd_enabled": True,
-            "score_threshold": 6
-        },
-        "buy_settings": DEFAULT_BUY_SETTINGS.copy(),
-        "sell_settings": DEFAULT_SELL_SETTINGS.copy(),
-        "auto_settings": {
-            "enabled": False,
-            "market_conditions": {
-                "check_interval_minutes": 15,
-                "bull_market": {
-                    "rsi_threshold": 65,
-                    "profit_target": 2.0,
-                    "stop_loss": 1.5
-                },
-                "bear_market": {
-                    "rsi_threshold": 60,
-                    "profit_target": 1.2,
-                    "stop_loss": 0.8
-                },
-                "neutral_market": {
-                    "rsi_threshold": 63,
-                    "profit_target": 1.5,
-                    "stop_loss": 1.0
-                }
-            }
-        }
-    }
+    # 기본 설정값은 config.default_settings 모듈의 값을 사용한다.
+    DEFAULT_CONFIG = DEFAULT_SETTINGS.copy()
     
     def __init__(self):
         """
