@@ -19,7 +19,6 @@ from core.market_analyzer import MarketAnalyzer
 from core.config_manager import ConfigManager
 import threading
 import time
-from core.trading_logic import TradingLogic
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 from core.constants import DEFAULT_COIN_SELECTION
 
@@ -83,8 +82,6 @@ bot_status = {
     'last_update': None
 }
 
-trading_logic = None
-
 # 설정 파일 경로
 CONFIG_FILE = 'config.json'
 
@@ -103,7 +100,7 @@ def load_config():
                 logger.info("설정 파일 로드 성공")
                 
                 # 필수 섹션 확인 및 보완
-                required_sections = ['trading', 'signals', 'notifications', 'market_analysis', 'buy_score']
+                required_sections = ['trading', 'notifications', 'market_analysis', 'buy_score']
                 default_config = get_default_config()
                 
                 for section in required_sections:
@@ -170,7 +167,7 @@ def validate_config(config):
         logger.info("설정 유효성 검사 시작...")
         
         # 필수 섹션 확인
-        required_sections = ['version', 'trading', 'signals', 'notifications', 'market_analysis', 'buy_score']
+        required_sections = ['version', 'trading', 'notifications', 'market_analysis', 'buy_score']
         for section in required_sections:
             if section not in config:
                 error_msg = f"[오류] 필수 섹션 누락: {section}"
@@ -210,34 +207,6 @@ def validate_config(config):
         if not isinstance(coin_selection.get('excluded_coins', []), list):
             validation_errors.append("[오류] excluded_coins는 리스트여야 합니다.")
 
-        # 신호 설정 검증
-        signals = config.get('signals', {})
-        if not isinstance(signals.get('enabled'), bool):
-            validation_errors.append("[오류] signals.enabled는 boolean이어야 합니다.")
-            
-        # 매수/매도 조건 검증
-        for condition_type in ['buy_conditions', 'sell_conditions']:
-            conditions = signals.get(condition_type, {})
-            if not isinstance(conditions.get('enabled'), (bool, dict)):
-                validation_errors.append(
-                    f"[오류] {condition_type}.enabled는 boolean 또는 dict이어야 합니다."
-                )
-                
-            # RSI 설정 검증
-            rsi = conditions.get('rsi', {})
-            if rsi.get('enabled', False) and 'threshold' in rsi:
-                if not isinstance(rsi.get('threshold'), (int, float)):
-                    validation_errors.append(
-                        f"[오류] {condition_type}.rsi.threshold는 숫자여야 합니다."
-                    )
-                    
-            # 볼린저 밴드 설정 검증
-            bollinger = conditions.get('bollinger', {})
-            if bollinger.get('enabled', False) and 'threshold' in bollinger:
-                if not isinstance(bollinger.get('threshold'), (int, float)):
-                    validation_errors.append(
-                        f"[오류] {condition_type}.bollinger.threshold는 숫자여야 합니다."
-                    )
 
         # 알림 설정 검증
         notifications = config.get('notifications', {})
@@ -695,9 +664,6 @@ def handle_select_coin(data):
         coin_data = market_analyzer.get_coin_data(market)
         emit('market_update', coin_data)
         
-        # 매수/매도 신호 계산 및 전송
-        signals = market_analyzer.calculate_signals(market)
-        emit('trade_signals', signals)
     except Exception as e:
         error_msg = f"코인 선택 중 오류 발생: {str(e)}"
         logger.error(error_msg)
@@ -708,9 +674,6 @@ def emit_market_update(market_data):
     try:
         socketio.emit('market_update', market_data)
         
-        # 매수/매도 신호 계산 및 전송
-        signals = market_analyzer.calculate_signals(market_data['market'])
-        socketio.emit('trade_signals', signals)
 
         # 보유 코인 및 수익 현황 업데이트
         if market_data['market'] in bot_status['holdings']:

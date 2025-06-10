@@ -2,8 +2,8 @@
     "version": "1.0.0",
     "trading": {
         "enabled": true,
-        "investment_amount": 200000,
-        "max_coins": 5,
+        "investment_amount": 7000,
+        "max_coins": 7,
         "coin_selection": {
             "min_price": 700,
             "max_price": 26666,
@@ -17,63 +17,6 @@
                 "KRW-GAS",
                 "KRW-BTS"
             ]
-        }
-    },
-    "signals": {
-        "enabled": false,
-        "buy_conditions": {
-            "bull": {
-                "rsi": 40,
-                "sigma": 1.8,
-                "vol_prev": 1.5,
-                "vol_ma": 1.2,
-                "slope": 0.12
-            },
-            "range": {
-                "rsi": 35,
-                "sigma": 2.0,
-                "vol_prev": 2.0,
-                "vol_ma": 1.5,
-                "slope": 0.1
-            },
-            "bear": {
-                "rsi": 30,
-                "sigma": 2.2,
-                "vol_prev": 2.5,
-                "vol_ma": 1.8,
-                "slope": 0.08
-            },
-            "enabled": {
-                "trend_filter": true,
-                "bull_filter": false,
-                "golden_cross": true,
-                "rsi": true,
-                "bollinger": true,
-                "volume_surge": true
-            }
-        },
-        "sell_conditions": {
-            "enabled": true,
-            "stop_loss": {
-                "enabled": true,
-                "threshold": -2.5,
-                "trailing_stop": 0.5
-            },
-            "take_profit": {
-                "enabled": true,
-                "threshold": 5.0,
-                "trailing_profit": 1.0
-            },
-            "dead_cross": {
-                "enabled": true
-            },
-            "rsi": {
-                "enabled": true,
-                "threshold": 60
-            },
-            "bollinger": {
-                "enabled": true
-            }
         }
     },
     "notifications": {
@@ -108,7 +51,7 @@
         "stochastic_enabled": true,
         "macd_weight": 1,
         "macd_enabled": true,
-        "score_threshold": 6,
+        "score_threshold": 5,
         "score_thresholds": {}
     },
     "buy_settings": {
@@ -160,8 +103,8 @@
         "trend_filter_on": true,
         "min_slope": 0.1
     },
-    "investment_amount": 200000,
-    "max_coins": 3,
+    "investment_amount": 7000,
+    "max_coins": 7,
     "rsi_enabled": true,
     "rsi_period": 14,
     "bollinger_enabled": false,

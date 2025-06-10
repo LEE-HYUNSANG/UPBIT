@@ -153,36 +153,6 @@ function updateFormValues(settings) {
     setValue('trading.min_volume_1h', settings.trading?.coin_selection?.min_volume_1h);
     setValue('trading.min_tick_ratio', settings.trading?.coin_selection?.min_tick_ratio);
 
-    // 매수 지표 설정
-    const buyConditions = settings.signals?.buy_conditions || {};
-    
-    // 상승장 설정
-    setValue('signals.buy_conditions.bull.rsi', buyConditions.bull?.rsi);
-    setValue('signals.buy_conditions.bull.sigma', buyConditions.bull?.sigma);
-    setValue('signals.buy_conditions.bull.vol_prev', buyConditions.bull?.vol_prev);
-    setValue('signals.buy_conditions.bull.vol_ma', buyConditions.bull?.vol_ma);
-    setValue('signals.buy_conditions.bull.slope', buyConditions.bull?.slope);
-
-    // 박스장 설정
-    setValue('signals.buy_conditions.range.rsi', buyConditions.range?.rsi);
-    setValue('signals.buy_conditions.range.sigma', buyConditions.range?.sigma);
-    setValue('signals.buy_conditions.range.vol_prev', buyConditions.range?.vol_prev);
-    setValue('signals.buy_conditions.range.vol_ma', buyConditions.range?.vol_ma);
-    setValue('signals.buy_conditions.range.slope', buyConditions.range?.slope);
-
-    // 하락장 설정
-    setValue('signals.buy_conditions.bear.rsi', buyConditions.bear?.rsi);
-    setValue('signals.buy_conditions.bear.sigma', buyConditions.bear?.sigma);
-    setValue('signals.buy_conditions.bear.vol_prev', buyConditions.bear?.vol_prev);
-    setValue('signals.buy_conditions.bear.vol_ma', buyConditions.bear?.vol_ma);
-    setValue('signals.buy_conditions.bear.slope', buyConditions.bear?.slope);
-
-    // 매수 조건 토글
-    setValue('signals.buy_conditions.enabled.trend_filter', buyConditions.enabled?.trend_filter);
-    setValue('signals.buy_conditions.enabled.golden_cross', buyConditions.enabled?.golden_cross);
-    setValue('signals.buy_conditions.enabled.rsi', buyConditions.enabled?.rsi);
-    setValue('signals.buy_conditions.enabled.bollinger', buyConditions.enabled?.bollinger);
-    setValue('signals.buy_conditions.enabled.volume_surge', buyConditions.enabled?.volume_surge);
 
     // 매수 주문 설정
     const buySet = settings.buy_settings || {};
@@ -251,37 +221,6 @@ function saveSettings(card = null) {
         excluded_coins: excludedCoins
     };
 
-    // 매수 조건 설정
-    settings.signals.buy_conditions = {
-        bull: {
-            rsi: getNumberValue('signals.buy_conditions.bull.rsi'),
-            sigma: getNumberValue('signals.buy_conditions.bull.sigma'),
-            vol_prev: getNumberValue('signals.buy_conditions.bull.vol_prev'),
-            vol_ma: getNumberValue('signals.buy_conditions.bull.vol_ma'),
-            slope: getNumberValue('signals.buy_conditions.bull.slope')
-        },
-        range: {
-            rsi: getNumberValue('signals.buy_conditions.range.rsi'),
-            sigma: getNumberValue('signals.buy_conditions.range.sigma'),
-            vol_prev: getNumberValue('signals.buy_conditions.range.vol_prev'),
-            vol_ma: getNumberValue('signals.buy_conditions.range.vol_ma'),
-            slope: getNumberValue('signals.buy_conditions.range.slope')
-        },
-        bear: {
-            rsi: getNumberValue('signals.buy_conditions.bear.rsi'),
-            sigma: getNumberValue('signals.buy_conditions.bear.sigma'),
-            vol_prev: getNumberValue('signals.buy_conditions.bear.vol_prev'),
-            vol_ma: getNumberValue('signals.buy_conditions.bear.vol_ma'),
-            slope: getNumberValue('signals.buy_conditions.bear.slope')
-        },
-        enabled: {
-            trend_filter: getBooleanValue('signals.buy_conditions.enabled.trend_filter'),
-            golden_cross: getBooleanValue('signals.buy_conditions.enabled.golden_cross'),
-            rsi: getBooleanValue('signals.buy_conditions.enabled.rsi'),
-            bollinger: getBooleanValue('signals.buy_conditions.enabled.bollinger'),
-            volume_surge: getBooleanValue('signals.buy_conditions.enabled.volume_surge')
-        }
-    };
 
     // 알림 설정
     settings.notifications = {
@@ -495,29 +434,12 @@ function updateSectionState(toggleId) {
         return;
     }
 
-    // 시장 자동감지 토글 처리
-    if (toggleId === 'signals.enabled') {
-        // 2열과 3열의 모든 입력 요소를 찾습니다
-        const signalSections = document.querySelectorAll('.col-md-3:nth-child(2), .col-md-3:nth-child(3)');
-        signalSections.forEach(section => {
-            const inputs = section.querySelectorAll('input, select');
-            inputs.forEach(input => {
-                if (input.id !== 'signals.enabled') {
-                    input.disabled = toggle.checked;  // 자동감지 ON이면 비활성화
-                }
-            });
-        });
-        return;
-    }
 }
 
 // 모든 섹션 상태 업데이트
 function updateAllSectionStates() {
     // 자동 거래 상태 업데이트
     updateSectionState('trading.enabled');
-    
-    // 시장 자동감지 상태 업데이트
-    updateSectionState('signals.enabled');
 }
 
 // 이벤트 리스너 설정

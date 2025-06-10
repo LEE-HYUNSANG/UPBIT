@@ -297,83 +297,6 @@ class Config:
         if coin_selection.get('min_tick_ratio', 0) < 0:
             raise ConfigError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
         
-        # === 매매 신호 설정 검증 ===
-        signals_config = config.get('signals', {})
-        if not signals_config.get('enabled', True):
-            return
-
-        # === 매도 조건 검증 ===
-        sell_conditions = signals_config.get('sell_conditions', {})
-        if sell_conditions.get('enabled', True):
-            stop_loss = sell_conditions.get('stop_loss', {})
-            take_profit = sell_conditions.get('take_profit', {})
-            
-            if stop_loss.get('enabled', False):
-                if not isinstance(stop_loss.get('threshold'), (int, float)):
-                    raise ConfigError("손절 임계값은 숫자여야 합니다.")
-                if stop_loss.get('threshold', 0) >= 0:
-                    raise ConfigError("손절 임계값은 0보다 작아야 합니다.")
-            
-            if take_profit.get('enabled', False):
-                if not isinstance(take_profit.get('threshold'), (int, float)):
-                    raise ConfigError("익절 임계값은 숫자여야 합니다.")
-                if take_profit.get('threshold', 0) <= 0:
-                    raise ConfigError("익절 임계값은 0보다 커야 합니다.")
-        
-        # === RSI 설정 검증 ===
-        common_conditions = signals_config.get('common_conditions', {})
-        if common_conditions.get('enabled', True):
-            rsi_config = common_conditions.get('rsi', {})
-            if rsi_config.get('enabled', False):
-                if not (0 < rsi_config.get('period', 14) <= 100):
-                    raise ConfigError("RSI 기간은 1에서 100 사이여야 합니다.")
-
-        buy_conditions = signals_config.get('buy_conditions', {})
-        if buy_conditions.get('enabled', True):
-            rsi_buy = buy_conditions.get('rsi', {})
-            if rsi_buy.get('enabled', False) and not (0 <= rsi_buy.get('threshold', 30) <= 100):
-                raise ConfigError("RSI 매수 임계값은 0에서 100 사이여야 합니다.")
-
-        sell_conditions = signals_config.get('sell_conditions', {})
-        if sell_conditions.get('enabled', True):
-            rsi_sell = sell_conditions.get('rsi', {})
-            if rsi_sell.get('enabled', False) and not (0 <= rsi_sell.get('threshold', 70) <= 100):
-                raise ConfigError("RSI 매도 임계값은 0에서 100 사이여야 합니다.")
-        
-        # === Golden/Dead Cross 설정 검증 ===
-        if buy_conditions.get('enabled', True):
-            golden_cross = buy_conditions.get('golden_cross', {})
-            if golden_cross.get('enabled', False):
-                if golden_cross.get('short_period', 0) <= 0:
-                    raise ConfigError("Golden Cross 단기 EMA 기간은 0보다 커야 합니다.")
-                
-                if golden_cross.get('long_period', 0) <= 0:
-                    raise ConfigError("Golden Cross 장기 EMA 기간은 0보다 커야 합니다.")
-                
-                if golden_cross.get('short_period', 5) >= golden_cross.get('long_period', 20):
-                    raise ConfigError("Golden Cross 단기 EMA 기간은 장기 EMA 기간보다 작아야 합니다.")
-
-        if sell_conditions.get('enabled', True):
-            dead_cross = sell_conditions.get('dead_cross', {})
-            if dead_cross.get('enabled', False):
-                if dead_cross.get('short_period', 0) <= 0:
-                    raise ConfigError("Dead Cross 단기 EMA 기간은 0보다 커야 합니다.")
-                
-                if dead_cross.get('long_period', 0) <= 0:
-                    raise ConfigError("Dead Cross 장기 EMA 기간은 0보다 커야 합니다.")
-                
-                if dead_cross.get('short_period', 5) >= dead_cross.get('long_period', 20):
-                    raise ConfigError("Dead Cross 단기 EMA 기간은 장기 EMA 기간보다 작아야 합니다.")
-        
-        # === 볼린저 밴드 설정 검증 ===
-        if common_conditions.get('enabled', True):
-            bollinger = common_conditions.get('bollinger', {})
-            if bollinger.get('enabled', False):
-                if bollinger.get('period', 0) <= 0:
-                    raise ConfigError("볼린저 밴드 기간은 0보다 커야 합니다.")
-                
-                if bollinger.get('k', 0) <= 0:
-                    raise ConfigError("볼린저 밴드 표준편차 배수는 0보다 커야 합니다.")
     
     def update_config(self, new_config: Dict[str, Any]):
         """
@@ -426,29 +349,6 @@ class Config:
             cfg["min_volume_1h"] = coin.get("min_volume_1h")
             cfg["min_tick_ratio"] = coin.get("min_tick_ratio")
 
-        if "signals" in cfg:
-            signals = cfg["signals"]
-            common = signals.get("common_conditions", {})
-            rsi_common = common.get("rsi", {})
-            cfg["rsi_enabled"] = rsi_common.get("enabled")
-            cfg["rsi_period"] = rsi_common.get("period")
-            bollinger = common.get("bollinger", {})
-            cfg["bollinger_enabled"] = bollinger.get("enabled")
-
-            buy = signals.get("buy_conditions", {})
-            rsi_buy = buy.get("rsi", {})
-            cfg["rsi_buy_enabled"] = rsi_buy.get("enabled")
-            cfg["rsi_buy_threshold"] = rsi_buy.get("threshold")
-
-            sell = signals.get("sell_conditions", {})
-            rsi_sell = sell.get("rsi", {})
-            cfg["rsi_sell_enabled"] = rsi_sell.get("enabled")
-            cfg["rsi_sell_threshold"] = rsi_sell.get("threshold")
-
-            stop_loss = sell.get("stop_loss", {})
-            cfg["stop_loss_enabled"] = stop_loss.get("enabled")
-            if "threshold" in stop_loss:
-                cfg["stop_loss"] = abs(stop_loss.get("threshold"))
 
         return cfg
 

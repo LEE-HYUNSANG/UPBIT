@@ -10,8 +10,8 @@ DEFAULT_SETTINGS = {
     "version": "1.0.0",
     "trading": {
         "enabled": True,
-        "investment_amount": 200000,
-        "max_coins": 5,
+        "investment_amount": 7000,
+        "max_coins": 7,
         "coin_selection": DEFAULT_COIN_SELECTION.copy()
     },
     "market_analysis": {
@@ -38,63 +38,6 @@ DEFAULT_SETTINGS = {
             "market_dominance": 0.2
         },
         "check_interval_minutes": 15
-    },
-    "signals": {
-        "enabled": False,
-        "buy_conditions": {
-            "bull": {
-                "rsi": 40,
-                "sigma": 1.8,
-                "vol_prev": 1.5,
-                "vol_ma": 1.2,
-                "slope": 0.12
-            },
-            "range": {
-                "rsi": 35,
-                "sigma": 2.0,
-                "vol_prev": 2.0,
-                "vol_ma": 1.5,
-                "slope": 0.10
-            },
-            "bear": {
-                "rsi": 30,
-                "sigma": 2.2,
-                "vol_prev": 2.5,
-                "vol_ma": 1.8,
-                "slope": 0.08
-            },
-            "enabled": {
-                "trend_filter": True,
-                "bull_filter": False,
-                "golden_cross": True,
-                "rsi": True,
-                "bollinger": True,
-                "volume_surge": True
-            }
-        },
-        "sell_conditions": {
-            "enabled": True,
-            "stop_loss": {
-                "enabled": True,
-                "threshold": -2.5,
-                "trailing_stop": 0.5
-            },
-            "take_profit": {
-                "enabled": True,
-                "threshold": 5.0,
-                "trailing_profit": 1.0
-            },
-            "dead_cross": {
-                "enabled": True
-            },
-            "rsi": {
-                "enabled": True,
-                "threshold": 60
-            },
-            "bollinger": {
-                "enabled": True
-            }
-        }
     },
     "notifications": {
         "trade": {
@@ -128,7 +71,7 @@ DEFAULT_SETTINGS = {
         "stochastic_enabled": True,
         "macd_weight": 1,
         "macd_enabled": True,
-        "score_threshold": 6,
+        "score_threshold": 5,
         # 코인별 점수 임계값
         "score_thresholds": {}
     },

@@ -137,73 +137,8 @@ class ConfigManager:
                 trading["coin_selection"] = coin
             nested["trading"] = trading
 
-        # signals 섹션 - RSI 관련 키만 처리하면 충분
-        if any(k in config for k in [
-            "rsi_enabled", "rsi_period", "rsi_buy_enabled",
-            "rsi_buy_threshold", "rsi_sell_enabled", "rsi_sell_threshold",
-            "bollinger_enabled", "stop_loss_enabled", "stop_loss",
-            "take_profit_enabled", "take_profit"]):
-            signals = nested.get("signals", {})
-            common = signals.get("common_conditions", {})
-            rsi_common = common.get("rsi", {})
-            if "rsi_enabled" in config:
-                rsi_common["enabled"] = config["rsi_enabled"]
-            if "rsi_period" in config:
-                rsi_common["period"] = config["rsi_period"]
-            if rsi_common:
-                common["rsi"] = rsi_common
-            if "bollinger_enabled" in config:
-                common.setdefault("bollinger", {})["enabled"] = config["bollinger_enabled"]
-            if common:
-                signals.setdefault("common_conditions", {}).update(common)
-
-            buy = signals.get("buy_conditions", {})
-            rsi_buy = buy.get("rsi", {})
-            if "rsi_buy_enabled" in config:
-                rsi_buy["enabled"] = config["rsi_buy_enabled"]
-            if "rsi_buy_threshold" in config:
-                rsi_buy["threshold"] = config["rsi_buy_threshold"]
-            if "rsi_enabled" in config and not config["rsi_enabled"]:
-                rsi_buy["enabled"] = False
-            if rsi_buy:
-                buy["rsi"] = rsi_buy
-            if buy:
-                signals.setdefault("buy_conditions", {}).update(buy)
-
-            sell = signals.get("sell_conditions", {})
-            rsi_sell = sell.get("rsi", {})
-            if "rsi_sell_enabled" in config:
-                rsi_sell["enabled"] = config["rsi_sell_enabled"]
-            if "rsi_sell_threshold" in config:
-                rsi_sell["threshold"] = config["rsi_sell_threshold"]
-            if "rsi_enabled" in config and not config["rsi_enabled"]:
-                rsi_sell["enabled"] = False
-            if rsi_sell:
-                sell["rsi"] = rsi_sell
-
-            if "stop_loss_enabled" in config or "stop_loss" in config:
-                sl = sell.get("stop_loss", {})
-                if "stop_loss_enabled" in config:
-                    sl["enabled"] = config["stop_loss_enabled"]
-                if "stop_loss" in config:
-                    # Config 모듈의 검증 규칙을 통과하도록 음수 값으로 저장
-                    sl["threshold"] = -abs(config["stop_loss"])
-                sell["stop_loss"] = sl
-            if "take_profit_enabled" in config or "take_profit" in config:
-                tp = sell.get("take_profit", {})
-                if "take_profit_enabled" in config:
-                    tp["enabled"] = config["take_profit_enabled"]
-                if "take_profit" in config:
-                    tp["threshold"] = config["take_profit"]
-                sell["take_profit"] = tp
-            if sell:
-                signals.setdefault("sell_conditions", {}).update(sell)
-
-            if signals:
-                nested["signals"] = signals
-
         # 기타 중첩 섹션은 그대로 복사
-        for key in ["signals", "notifications", "auto_settings", "version", "buy_score"]:
+        for key in ["notifications", "auto_settings", "version", "buy_score"]:
             if key in config:
                 nested[key] = config[key]
 
@@ -277,28 +212,7 @@ class ConfigManager:
             cfg["min_volume_1h"] = coin.get("min_volume_1h")
             cfg["min_tick_ratio"] = coin.get("min_tick_ratio")
 
-        if "signals" in cfg:
-            signals = cfg["signals"]
-            common = signals.get("common_conditions", {})
-            rsi_common = common.get("rsi", {})
-            cfg["rsi_enabled"] = rsi_common.get("enabled")
-            cfg["rsi_period"] = rsi_common.get("period")
-            bollinger = common.get("bollinger", {})
-            cfg["bollinger_enabled"] = bollinger.get("enabled")
 
-            buy = signals.get("buy_conditions", {})
-            rsi_buy = buy.get("rsi", {})
-            cfg["rsi_buy_enabled"] = rsi_buy.get("enabled")
-            cfg["rsi_buy_threshold"] = rsi_buy.get("threshold")
-
-            sell = signals.get("sell_conditions", {})
-            rsi_sell = sell.get("rsi", {})
-            cfg["rsi_sell_enabled"] = rsi_sell.get("enabled")
-            cfg["rsi_sell_threshold"] = rsi_sell.get("threshold")
-
-            stop_loss = sell.get("stop_loss", {})
-            cfg["stop_loss_enabled"] = stop_loss.get("enabled")
-            cfg["stop_loss"] = stop_loss.get("threshold")
 
         return cfg
     
@@ -336,6 +250,11 @@ class ConfigManager:
                 if new_config['stop_loss'] >= new_config['take_profit']:
                     raise ValueError("손절가가 익절가보다 크거나 같습니다.")
 
+            # RSI 비활성화 시 관련 설정 강제 비활성화
+            if new_config.get('rsi_enabled') is False:
+                new_config['rsi_buy_enabled'] = False
+                new_config['rsi_sell_enabled'] = False
+
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
@@ -358,6 +277,11 @@ class ConfigManager:
                 return src
 
             merged = deep_merge(json.loads(json.dumps(self.config)), nested_config)
+
+            # RSI 비활성화 시 관련 매수/매도 설정도 비활성화
+            if merged.get('rsi_enabled') is False:
+                merged['rsi_buy_enabled'] = False
+                merged['rsi_sell_enabled'] = False
 
             # 평면 구조 값도 병합하여 검증에 사용
             for k, v in new_config.items():
@@ -425,27 +349,3 @@ class ConfigManager:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
                 raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
-
-        # 신호 관련 설정 검증
-        if 'signals' in cfg:
-            signals = cfg['signals']
-            common = signals.get('common_conditions', {})
-            rsi = common.get('rsi', {})
-            if rsi.get('enabled', False):
-                period = rsi.get('period', 0)
-                if not isinstance(period, (int, float)) or not (0 < period <= 100):
-                    raise ValueError("RSI 기간은 1에서 100 사이여야 합니다.")
-
-            sell = signals.get('sell_conditions', {})
-            stop_loss = sell.get('stop_loss', {})
-            take_profit = sell.get('take_profit', {})
-            if (
-                stop_loss.get('enabled', False)
-                and take_profit.get('enabled', False)
-                and 'threshold' in stop_loss
-                and 'threshold' in take_profit
-            ):
-                sl_val = abs(float(stop_loss['threshold']))
-                tp_val = float(take_profit['threshold'])
-                if sl_val >= tp_val:
-                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
