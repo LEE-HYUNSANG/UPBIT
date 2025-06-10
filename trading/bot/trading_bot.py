@@ -1,5 +1,6 @@
 import time
 import json
+import math
 from typing import Dict, List, Optional
 from core.upbit_api import UpbitAPI
 from core.order_manager import OrderManager
@@ -37,6 +38,13 @@ class TradingBot:
                 self.buy_settings = json.load(f)
         except Exception:
             self.buy_settings = {}
+
+        # 매도 설정 로드
+        try:
+            with open("config/sell_settings.json", "r", encoding="utf-8") as f:
+                self.sell_settings = json.load(f)
+        except Exception:
+            self.sell_settings = {}
 
         # 실행 상태
         self.is_running = False
@@ -140,8 +148,21 @@ class TradingBot:
                         executed_volume = float(order_info.get('executed_volume', 0))
                         if executed_volume:
                             avg_price = float(order_info['price']) / executed_volume
-                            self.strategy.update_position(symbol, avg_price, executed_volume)
-                            self.logger.info(f"{symbol} 매수 완료")
+
+                            tick = self._get_tick_size(avg_price)
+                            tp_pct = float(self.sell_settings.get('TP_PCT', 0))
+                            min_ticks = int(self.sell_settings.get('MINIMUM_TICKS', 2))
+                            target_price = avg_price * (1 + tp_pct / 100)
+                            target_price = math.ceil(target_price / tick) * tick
+                            if target_price - avg_price < tick * min_ticks:
+                                target_price = avg_price + tick * min_ticks
+                                target_price = math.ceil(target_price / tick) * tick
+
+                            sell_success, sell_order = self.order_manager.place_limit_sell(symbol, executed_volume, target_price)
+                            sell_uuid = sell_order['uuid'] if sell_success and sell_order else None
+
+                            self.strategy.update_position(symbol, avg_price, executed_volume, sell_uuid, target_price)
+                            self.logger.info(f"{symbol} 매수 및 선매도 주문 완료")
 
                             if len(self.strategy.positions) >= self.settings['trading']['max_coins']:
                                 break
