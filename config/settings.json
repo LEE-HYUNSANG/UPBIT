@@ -41,6 +41,7 @@
             },
             "enabled": {
                 "trend_filter": false,
+                "bull_filter": false,
                 "golden_cross": false,
                 "rsi": false,
                 "bollinger": false,

@@ -33,6 +33,13 @@ class MarketData:
             symbol: 심볼
         """
         try:
+            # 1분봉 데이터 업데이트
+            df_1m = self.exchange.get_ohlcv(symbol, "minute1", 100)
+            if df_1m is not None:
+                if symbol not in self.data_cache:
+                    self.data_cache[symbol] = {}
+                self.data_cache[symbol]["1m"] = df_1m
+
             # 5분봉 데이터 업데이트
             df_5m = self.exchange.get_ohlcv(symbol, "minute5", 100)
             if df_5m is not None:
@@ -84,7 +91,7 @@ class MarketData:
         캐시된 시장 데이터 조회
         Args:
             symbol: 심볼
-            interval: 시간 간격 (5m, 15m)
+            interval: 시간 간격 (1m, 5m, 15m)
         Returns:
             OHLCV DataFrame
         """

@@ -7,20 +7,20 @@ from ..indicators.technical import (
 )
 from ..utils.logger import TradingLogger
 
-class FiveMinStrategy:
+class OneMinStrategy:
     def __init__(self, settings: Dict):
         """
-        5분봉 매매 전략 클래스
+        1분봉 매매 전략 클래스
         Args:
             settings: 설정값 딕셔너리
         """
         self.settings = settings
-        self.logger = TradingLogger("FiveMinStrategy")
+        self.logger = TradingLogger("OneMinStrategy")
         self.positions: Dict[str, Dict] = {}  # 보유 포지션 정보
         
-    def check_buy_signal(self, df_5m: pd.DataFrame, df_15m: pd.DataFrame) -> bool:
+    def check_buy_signal(self, df_1m: pd.DataFrame, df_15m: pd.DataFrame) -> bool:
         """매수 신호 확인"""
-        if len(df_5m) < 20 or len(df_15m) < 50:  # 최소 데이터 확인
+        if len(df_1m) < 20 or len(df_15m) < 50:  # 최소 데이터 확인
             return False
             
         # 15분봉 추세 필터
@@ -33,14 +33,23 @@ class FiveMinStrategy:
             if not (current_price > current_ema and current_ema > prev_ema):
                 return False
         
-        # 시장 상황 판단 (상승장/박스장/하락장)
-        market_condition = self._determine_market_condition(df_15m)
-        conditions = self.settings['signals']['buy_conditions'][market_condition]
+        buy_conf = self.settings['signals']['buy_conditions']
+
+        # 상승장 필터가 활성화된 경우 시장 상황 확인
+        if buy_conf['enabled'].get('bull_filter', False):
+            if self._determine_market_condition(df_15m) != 'bull':
+                return False
+
+        # 단일 조건값 구조와 호환을 위해 분기 처리
+        if 'rsi' in buy_conf:
+            conditions = buy_conf
+        else:
+            conditions = buy_conf.get('bull', {})
         
         # 1. 골든크로스 + 기울기
         if self.settings['signals']['buy_conditions']['enabled']['golden_cross']:
-            sma5 = calculate_sma(df_5m['close'], 5)
-            sma20 = calculate_sma(df_5m['close'], 20)
+            sma5 = calculate_sma(df_1m['close'], 5)
+            sma20 = calculate_sma(df_1m['close'], 20)
             
             prev_cross = sma5.iloc[-2] <= sma20.iloc[-2]
             current_cross = sma5.iloc[-1] > sma20.iloc[-1]
@@ -51,31 +60,31 @@ class FiveMinStrategy:
         
         # 2. RSI 과매도
         if self.settings['signals']['buy_conditions']['enabled']['rsi']:
-            rsi = calculate_rsi(df_5m['close'], 14)
+            rsi = calculate_rsi(df_1m['close'], 14)
             if not (rsi.iloc[-1] <= conditions['rsi'] and rsi.iloc[-2] <= conditions['rsi']):
                 return False
         
         # 3. 볼린저 밴드 하단 이탈
         if self.settings['signals']['buy_conditions']['enabled']['bollinger']:
-            _, _, lower = calculate_bollinger_bands(df_5m['close'], 20, conditions['sigma'])
-            if not (df_5m['close'].iloc[-1] < lower.iloc[-1]):
+            _, _, lower = calculate_bollinger_bands(df_1m['close'], 20, conditions['sigma'])
+            if not (df_1m['close'].iloc[-1] < lower.iloc[-1]):
                 return False
         
         # 4. 거래량 급증
         if self.settings['signals']['buy_conditions']['enabled']['volume_surge']:
-            prev_vol, ma_vol = calculate_volume_conditions(df_5m['volume'])
+            prev_vol, ma_vol = calculate_volume_conditions(df_1m['volume'])
             if not (prev_vol and ma_vol):
                 return False
         
         return True
     
-    def check_sell_signal(self, symbol: str, df_5m: pd.DataFrame) -> bool:
+    def check_sell_signal(self, symbol: str, df_1m: pd.DataFrame) -> bool:
         """매도 신호 확인"""
         if symbol not in self.positions:
             return False
             
         position = self.positions[symbol]
-        current_price = df_5m['close'].iloc[-1]
+        current_price = df_1m['close'].iloc[-1]
         highest_price = max(position['highest_price'], current_price)
         self.positions[symbol]['highest_price'] = highest_price
         
@@ -99,8 +108,8 @@ class FiveMinStrategy:
         
         # 3. 데드크로스
         if self.settings['signals']['sell_conditions']['dead_cross']['enabled']:
-            sma5 = calculate_sma(df_5m['close'], 5)
-            sma20 = calculate_sma(df_5m['close'], 20)
+            sma5 = calculate_sma(df_1m['close'], 5)
+            sma20 = calculate_sma(df_1m['close'], 20)
             slope = calculate_slope(sma5)
             
             if (sma5.iloc[-2] >= sma20.iloc[-2] and 
@@ -111,7 +120,7 @@ class FiveMinStrategy:
         
         # 4. RSI 과매수
         if self.settings['signals']['sell_conditions']['rsi']['enabled']:
-            rsi = calculate_rsi(df_5m['close'], 14)
+            rsi = calculate_rsi(df_1m['close'], 14)
             threshold = self.settings['signals']['sell_conditions']['rsi']['threshold']
             
             if rsi.iloc[-1] >= threshold and rsi.iloc[-2] >= threshold:
@@ -120,9 +129,9 @@ class FiveMinStrategy:
         
         # 5. 볼린저 밴드 상단 돌파
         if self.settings['signals']['sell_conditions']['bollinger']['enabled']:
-            upper, _, _ = calculate_bollinger_bands(df_5m['close'], 20, 2.0)
-            
-            if df_5m['close'].iloc[-1] > upper.iloc[-1]:
+            upper, _, _ = calculate_bollinger_bands(df_1m['close'], 20, 2.0)
+
+            if df_1m['close'].iloc[-1] > upper.iloc[-1]:
                 self.logger.info(f"{symbol} 볼린저 밴드 상단 돌파 신호 발생")
                 return True
         
