@@ -2,7 +2,7 @@ import time
 from typing import Dict, List, Optional
 from core.upbit_api import UpbitAPI
 from ..data.market_data import MarketData
-from ..strategies.five_min_strategy import FiveMinStrategy
+from ..strategies.one_min_strategy import OneMinStrategy
 from ..utils.logger import TradingLogger
 
 class TradingBot:
@@ -24,7 +24,7 @@ class TradingBot:
         self.market_data = MarketData(self.exchange, settings)
         
         # 전략 초기화
-        self.strategy = FiveMinStrategy(settings)
+        self.strategy = OneMinStrategy(settings)
         
         # 실행 상태
         self.is_running = False
@@ -79,12 +79,12 @@ class TradingBot:
         """보유 중인 코인의 매도 신호 확인"""
         for symbol in list(self.strategy.positions.keys()):
             try:
-                df_5m = self.market_data.get_data(symbol, "5m")
-                if df_5m is None or df_5m.empty:
+                df_1m = self.market_data.get_data(symbol, "1m")
+                if df_1m is None or df_1m.empty:
                     continue
                     
                 # 매도 신호 확인
-                if self.strategy.check_sell_signal(symbol, df_5m):
+                if self.strategy.check_sell_signal(symbol, df_1m):
                     position = self.strategy.positions[symbol]
                     
                     # 시장가 매도 실행
@@ -116,14 +116,14 @@ class TradingBot:
                     continue
                     
                 # 시장 데이터 조회
-                df_5m = self.market_data.get_data(symbol, "5m")
+                df_1m = self.market_data.get_data(symbol, "1m")
                 df_15m = self.market_data.get_data(symbol, "15m")
-                
-                if df_5m is None or df_15m is None or df_5m.empty or df_15m.empty:
+
+                if df_1m is None or df_15m is None or df_1m.empty or df_15m.empty:
                     continue
                     
                 # 매수 신호 확인
-                if self.strategy.check_buy_signal(df_5m, df_15m):
+                if self.strategy.check_buy_signal(df_1m, df_15m):
                     # 시장가 매수 실행
                     order = self.exchange.buy_market_order(symbol, investment_amount)
                     if order:

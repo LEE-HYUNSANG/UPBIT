@@ -87,6 +87,7 @@ DEFAULT_SETTINGS = {
             },
             "enabled": {
                 "trend_filter": True,
+                "bull_filter": False,
                 "golden_cross": True,
                 "rsi": True,
                 "bollinger": True,
