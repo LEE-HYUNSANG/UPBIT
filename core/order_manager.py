@@ -216,3 +216,64 @@ class OrderManager:
         except Exception as e:
             logger.error(f"{market}: 매도 주문 처리 중 오류 발생 - {str(e)}")
             return False, None 
+    def _place_limit_order(self, market: str, amount: float, order_type: str, timeout: int) -> Tuple[bool, Optional[Dict]]:
+        """지정가 주문 후 체결 대기"""
+        try:
+            orderbook = self.api.get_orderbook(market)
+            if not orderbook:
+                logger.error(f"{market}: 호가 정보 조회 실패")
+                return False, None
+
+            ask_price = float(orderbook['orderbook_units'][0]['ask_price'])
+            bid_price = float(orderbook['orderbook_units'][0]['bid_price'])
+            tick = ask_price - bid_price if ask_price > bid_price else bid_price * 0.001
+
+            if order_type == 'best_bid':
+                price = bid_price
+            elif order_type == 'best_bid+1':
+                price = bid_price + tick
+            elif order_type == 'best_ask':
+                price = ask_price
+            else:
+                price = ask_price
+
+            volume = amount / price
+            order = self.api.place_order(
+                market=market,
+                side='bid',
+                volume=volume,
+                price=price,
+                ord_type='limit'
+            )
+
+            if not order:
+                logger.error(f"{market}: 매수 주문 실패")
+                return False, None
+
+            success, final_order = self._wait_for_order(order['uuid'], timeout)
+            if not success:
+                self.api.cancel_order(order['uuid'])
+            return success, final_order
+        except Exception as e:
+            logger.error(f"{market}: 지정가 매수 처리 중 오류 발생 - {str(e)}")
+            return False, None
+
+    def buy_with_settings(self, market: str, settings: Dict) -> Tuple[bool, Optional[Dict]]:
+        """설정 기반 매수 진행"""
+        mapping = {
+            'BID1': 'best_bid',
+            'BID1+': 'best_bid+1',
+            'ASK1': 'best_ask'
+        }
+        amount = float(settings.get('ENTRY_SIZE_INITIAL', 0))
+        first_type = mapping.get(settings.get('1st_Bid_Price', 'BID1'), 'best_bid')
+        first_wait = int(settings.get('LIMIT_WAIT_SEC_1', self.order_timeout))
+        second_type = mapping.get(settings.get('2nd_Bid_Price', 'ASK1'), 'best_ask')
+        second_wait = int(settings.get('LIMIT_WAIT_SEC_2', 0))
+
+        success, order = self._place_limit_order(market, amount, first_type, first_wait)
+        if success:
+            return True, order
+        if second_wait > 0:
+            return self._place_limit_order(market, amount, second_type, second_wait)
+        return False, None

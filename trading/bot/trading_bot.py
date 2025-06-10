@@ -1,6 +1,8 @@
 import time
+import json
 from typing import Dict, List, Optional
 from core.upbit_api import UpbitAPI
+from core.order_manager import OrderManager
 from ..data.market_data import MarketData
 from ..strategies.one_min_strategy import OneMinStrategy
 from ..utils.logger import TradingLogger
@@ -19,13 +21,23 @@ class TradingBot:
         
         # 거래소 인스턴스 초기화
         self.exchange = UpbitAPI(access_key, secret_key)
-        
+
+        # 주문 관리자 초기화
+        self.order_manager = OrderManager(self.exchange)
+
         # 데이터 관리자 초기화
         self.market_data = MarketData(self.exchange, settings)
-        
+
         # 전략 초기화
         self.strategy = OneMinStrategy(settings, self.exchange)
-        
+
+        # 매수 설정 로드
+        try:
+            with open("config/buy_settings.json", "r", encoding="utf-8") as f:
+                self.buy_settings = json.load(f)
+        except Exception:
+            self.buy_settings = {}
+
         # 실행 상태
         self.is_running = False
         
@@ -124,21 +136,14 @@ class TradingBot:
                     
                 # 매수 신호 확인
                 if self.strategy.check_buy_signal(symbol, df_1m, df_15m):
-                    # 시장가 매수 실행
-                    order = self.exchange.buy_market_order(symbol, investment_amount)
-                    if order:
-                        # 체결 정보 조회
-                        time.sleep(1)  # 체결 대기
-                        order_info = self.exchange.get_order_info(order['uuid'])
-                        if order_info and order_info['state'] == 'done':
-                            executed_volume = float(order_info['executed_volume'])
+                    success, order_info = self.order_manager.buy_with_settings(symbol, self.buy_settings)
+                    if success and order_info:
+                        executed_volume = float(order_info.get('executed_volume', 0))
+                        if executed_volume:
                             avg_price = float(order_info['price']) / executed_volume
-                            
-                            # 포지션 정보 업데이트
                             self.strategy.update_position(symbol, avg_price, executed_volume)
                             self.logger.info(f"{symbol} 매수 완료")
-                            
-                            # 최대 보유 코인 수 도달 시 종료
+
                             if len(self.strategy.positions) >= self.settings['trading']['max_coins']:
                                 break
                                 

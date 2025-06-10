@@ -418,6 +418,41 @@
                                 <label class="btn btn-outline-primary" for="buy_price_best_ask">최저매도호가</label>
                             </div>
                         </div>
+                        <div class="mt-4">
+                            <h6 class="mb-3">매수 주문 설정</h6>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">1회 주문 가격(원)</label>
+                                    <input type="number" class="form-control" id="buy_settings.ENTRY_SIZE_INITIAL">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">1회 대기 시간(초)</label>
+                                    <input type="number" class="form-control" id="buy_settings.LIMIT_WAIT_SEC_1">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">1회 체결 가격</label>
+                                    <select class="form-select" id="buy_settings.1st_Bid_Price">
+                                        <option value="BID1">BID1</option>
+                                        <option value="BID1+">BID1+</option>
+                                        <option value="ASK1">ASK1</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row g-2 mt-2">
+                                <div class="col-md-4">
+                                    <label class="form-label">2회 대기 시간(초)</label>
+                                    <input type="number" class="form-control" id="buy_settings.LIMIT_WAIT_SEC_2">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">2회 체결 가격</label>
+                                    <select class="form-select" id="buy_settings.2nd_Bid_Price">
+                                        <option value="BID1">BID1</option>
+                                        <option value="BID1+">BID1+</option>
+                                        <option value="ASK1">ASK1</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
