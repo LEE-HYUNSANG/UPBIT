@@ -104,8 +104,6 @@ const excludedCoinsList = document.getElementById('excluded-coins-list');
 document.addEventListener('DOMContentLoaded', () => {
     // 초기 설정 로드
     loadSettings();
-    loadBuySettings();
-    loadSellSettings();
 
     // 제외 코인 입력 이벤트
     excludedCoinInput.addEventListener('keypress', (e) => {
@@ -117,8 +115,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 설정값 변경 이벤트 리스너
     document.querySelectorAll('input, select').forEach(input => {
-        input.addEventListener('change', () => {
-            markSettingsAsChanged();
+        input.addEventListener('change', (e) => {
+            markSettingsAsChanged(e.target);
         });
     });
 
@@ -147,14 +145,14 @@ function addExcludedCoin() {
     excludedCoins.push(coin);
     updateExcludedCoinsList(excludedCoins);
     input.value = '';
-    markSettingsAsChanged();
+    markSettingsAsChanged(input);
 }
 
 // 제외 코인 제거
 function removeExcludedCoin(coin) {
     excludedCoins = excludedCoins.filter(c => c !== coin);
     updateExcludedCoinsList(excludedCoins);
-    markSettingsAsChanged();
+    markSettingsAsChanged(document.getElementById('excluded-coin-input'));
 }
 
 // 제외 코인 목록 업데이트
@@ -177,8 +175,9 @@ function updateExcludedCoinsList(coins) {
 }
 
 // 설정 변경 표시
-function markSettingsAsChanged() {
-    const saveButton = document.querySelector('button.btn-primary');
+function markSettingsAsChanged(element) {
+    const card = element.closest('.card');
+    const saveButton = card ? card.querySelector('.save-btn') : null;
     if (saveButton) {
         saveButton.classList.add('btn-warning');
         saveButton.classList.remove('btn-primary');
@@ -255,6 +254,16 @@ function updateFormValues(settings) {
     setValue('signals.buy_conditions.enabled.bollinger', buyConditions.enabled?.bollinger);
     setValue('signals.buy_conditions.enabled.volume_surge', buyConditions.enabled?.volume_surge);
 
+    // 매수 주문 설정
+    const buySet = settings.buy_settings || {};
+    setValue('buy_settings.ENTRY_SIZE_INITIAL', buySet.ENTRY_SIZE_INITIAL);
+    setValue('buy_settings.LIMIT_WAIT_SEC_1', buySet.LIMIT_WAIT_SEC_1);
+    if (document.getElementById('buy_settings.1st_Bid_Price'))
+        document.getElementById('buy_settings.1st_Bid_Price').value = buySet['1st_Bid_Price'] || 'BID1+';
+    setValue('buy_settings.LIMIT_WAIT_SEC_2', buySet.LIMIT_WAIT_SEC_2);
+    if (document.getElementById('buy_settings.2nd_Bid_Price'))
+        document.getElementById('buy_settings.2nd_Bid_Price').value = buySet['2nd_Bid_Price'] || 'ASK1';
+
     // 매도 설정
     setValue('sell_settings.TP_PCT', settings.sell_settings?.TP_PCT);
     setValue('sell_settings.MINIMUM_TICKS', settings.sell_settings?.MINIMUM_TICKS);
@@ -291,52 +300,9 @@ function updateFormValues(settings) {
 }
 
 // 매수 주문 설정 로드
-function loadBuySettings() {
-    fetch('/api/buy_settings')
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                updateBuySettingsForm(data.data);
-            }
-        })
-        .catch(() => {
-            showNotification('매수 설정을 불러오는 중 오류가 발생했습니다.', 'error');
-        });
-}
-
-function updateBuySettingsForm(settings) {
-    if (!settings) return;
-    setValue('buy_settings.ENTRY_SIZE_INITIAL', settings.ENTRY_SIZE_INITIAL);
-    setValue('buy_settings.LIMIT_WAIT_SEC_1', settings.LIMIT_WAIT_SEC_1);
-    const first = document.getElementById('buy_settings.1st_Bid_Price');
-    if (first) first.value = settings['1st_Bid_Price'] || 'BID1+';
-    setValue('buy_settings.LIMIT_WAIT_SEC_2', settings.LIMIT_WAIT_SEC_2);
-    const second = document.getElementById('buy_settings.2nd_Bid_Price');
-    if (second) second.value = settings['2nd_Bid_Price'] || 'ASK1';
-}
-
-// 매도 주문 설정 로드
-function loadSellSettings() {
-    fetch('/api/sell_settings')
-        .then(res => res.json())
-        .then(data => {
-            if (data.success) {
-                updateSellSettingsForm(data.data);
-            }
-        })
-        .catch(() => {
-            showNotification('매도 설정을 불러오는 중 오류가 발생했습니다.', 'error');
-        });
-}
-
-function updateSellSettingsForm(settings) {
-    if (!settings) return;
-    setValue('sell_settings.TP_PCT', settings.TP_PCT);
-    setValue('sell_settings.MINIMUM_TICKS', settings.MINIMUM_TICKS);
-}
 
 // 설정 저장
-function saveSettings() {
+function saveSettings(card = null) {
     const settings = {
         trading: {
             investment_amount: getNumberValue('trading.investment_amount'),
@@ -382,10 +348,6 @@ function saveSettings() {
                 }
             }
         },
-        sell_settings: {
-            TP_PCT: getNumberValue('sell_settings.TP_PCT'),
-            MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
-        },
         notifications: {
             trade: {
                 start: getBooleanValue('notifications.trade.start'),
@@ -417,6 +379,17 @@ function saveSettings() {
             macd_weight: getNumberValue('buy_score.macd_weight'),
             macd_enabled: document.getElementById('buy_score.macd_enabled').value === 'true',
             score_threshold: getNumberValue('buy_score.score_threshold')
+        },
+        buy_settings: {
+            ENTRY_SIZE_INITIAL: getNumberValue('buy_settings.ENTRY_SIZE_INITIAL'),
+            LIMIT_WAIT_SEC_1: getNumberValue('buy_settings.LIMIT_WAIT_SEC_1'),
+            "1st_Bid_Price": document.getElementById('buy_settings.1st_Bid_Price').value,
+            LIMIT_WAIT_SEC_2: getNumberValue('buy_settings.LIMIT_WAIT_SEC_2'),
+            "2nd_Bid_Price": document.getElementById('buy_settings.2nd_Bid_Price').value
+        },
+        sell_settings: {
+            TP_PCT: getNumberValue('sell_settings.TP_PCT'),
+            MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
         }
     };
 
@@ -430,60 +403,26 @@ function saveSettings() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const buySettings = {
-                ENTRY_SIZE_INITIAL: getNumberValue('buy_settings.ENTRY_SIZE_INITIAL'),
-                LIMIT_WAIT_SEC_1: getNumberValue('buy_settings.LIMIT_WAIT_SEC_1'),
-                "1st_Bid_Price": document.getElementById('buy_settings.1st_Bid_Price').value,
-                LIMIT_WAIT_SEC_2: getNumberValue('buy_settings.LIMIT_WAIT_SEC_2'),
-                "2nd_Bid_Price": document.getElementById('buy_settings.2nd_Bid_Price').value
-            };
-            return fetch('/api/buy_settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(buySettings)
-            });
-        } else {
-            throw new Error(data.error || '설정 저장 중 오류가 발생했습니다.');
-        }
-    })
-    .then(res => res ? res.json() : {success: true})
-    .then(result => {
-        if (result.success) {
-            const sellSettings = {
-                TP_PCT: getNumberValue('sell_settings.TP_PCT'),
-                MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
-            };
-            return fetch('/api/sell_settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(sellSettings)
-            });
-        } else {
-            throw new Error(result.error || '매수 설정 저장 중 오류가 발생했습니다.');
-        }
-    })
-    .then(res => res ? res.json() : {success: true})
-    .then(result => {
-        if (result.success) {
             showNotification('설정이 저장되었습니다.', 'success');
             currentSettings = settings;
-            const saveButton = document.querySelector('button.btn-warning');
-            if (saveButton) {
-                saveButton.classList.remove('btn-warning');
-                saveButton.classList.add('btn-primary');
+            const btn = card ? card.querySelector('.save-btn') : document.querySelector('button.btn-warning');
+            if (btn) {
+                btn.classList.remove('btn-warning');
+                btn.classList.add('btn-primary');
             }
         } else {
-            showNotification(result.error || '매도 설정 저장 중 오류가 발생했습니다.', 'error');
+            showNotification(data.error || '설정 저장 중 오류가 발생했습니다.', 'error');
         }
     })
     .catch(error => {
         console.error('Error:', error);
         showNotification('설정 저장 중 오류가 발생했습니다.', 'error');
     });
+}
+
+function saveCard(btn) {
+    const card = btn.closest('.card');
+    saveSettings(card);
 }
 
 // 설정 초기화

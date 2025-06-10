@@ -82,7 +82,7 @@ def load_config():
     """설정 파일 로드"""
     try:
         logger.info("설정 파일 로드 시작...")
-        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'settings.json')
+        config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config.json')
         logger.info(f"설정 파일 경로: {config_path}")
         
         # 설정 파일 존재 여부 확인

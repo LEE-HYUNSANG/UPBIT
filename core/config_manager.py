@@ -36,6 +36,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 from . import config
+from config.default_settings import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class ConfigManager:
     """
@@ -235,6 +236,8 @@ class ConfigManager:
                 "macd_enabled": True,
                 "score_threshold": 6
             },
+            "buy_settings": DEFAULT_BUY_SETTINGS.copy(),
+            "sell_settings": DEFAULT_SELL_SETTINGS.copy(),
             "auto_settings": {
                 "enabled": False
             }

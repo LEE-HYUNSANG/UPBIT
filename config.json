@@ -119,6 +119,17 @@
         "macd_enabled": true,
         "score_threshold": 6
     },
+    "buy_settings": {
+        "ENTRY_SIZE_INITIAL": 7000,
+        "LIMIT_WAIT_SEC_1": 30,
+        "1st_Bid_Price": "BID1+",
+        "LIMIT_WAIT_SEC_2": 20,
+        "2nd_Bid_Price": "ASK1"
+    },
+    "sell_settings": {
+        "TP_PCT": 0.18,
+        "MINIMUM_TICKS": 2
+    },
     "auto_settings": {
         "enabled": false
     },
