@@ -69,7 +69,9 @@ class TradingLogger:
         
         # 파일 핸들러 설정 (일별 로그 파일)
         today = datetime.now().strftime('%Y%m%d')
-        fh = logging.FileHandler(f'{self.log_dir}/trading_{today}.log')
+        fh = logging.FileHandler(
+            f'{self.log_dir}/trading_{today}.log', encoding='utf-8'
+        )
         fh.setLevel(logging.INFO)
         
         # 콘솔 핸들러 설정 (실시간 모니터링용)
