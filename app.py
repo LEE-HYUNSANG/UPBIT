@@ -1,5 +1,6 @@
 from flask import Flask, render_template, jsonify, request
-from flask_socketio import SocketIO, emit
+from flask_socketio import emit
+from extensions import socketio
 import logging
 from logging.handlers import RotatingFileHandler
 import json
@@ -44,7 +45,7 @@ DEFAULT_SETTINGS = {
 }
 
 app = Flask(__name__)
-socketio = SocketIO(app, cors_allowed_origins="*")
+socketio.init_app(app)
 
 # MarketAnalyzer 초기화
 try:
