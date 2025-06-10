@@ -325,14 +325,20 @@
                                 <tr>
                                     <td>체결강도</td>
                                     <td><input type="number" id="buy_score.strength_weight" value="2"></td>
-                                    <td><input type="number" id="buy_score.strength_threshold" value="130"></td>
-                                    <td>%</td>
+                                    <td>
+                                        <input type="number" id="buy_score.strength_threshold_low" value="110" style="width:70px"> /
+                                        <input type="number" id="buy_score.strength_threshold" value="130" style="width:70px">
+                                    </td>
+                                    <td>% (1/2점)</td>
                                 </tr>
                                 <tr>
                                     <td>실시간 거래량 급증</td>
                                     <td><input type="number" id="buy_score.volume_spike_weight" value="2"></td>
-                                    <td><input type="number" id="buy_score.volume_spike_threshold" value="200"></td>
-                                    <td>%</td>
+                                    <td>
+                                        <input type="number" id="buy_score.volume_spike_threshold_low" value="150" style="width:70px"> /
+                                        <input type="number" id="buy_score.volume_spike_threshold" value="200" style="width:70px">
+                                    </td>
+                                    <td>% (1/2점)</td>
                                 </tr>
                                 <tr>
                                     <td>호가 잔량 불균형</td>

@@ -73,8 +73,10 @@ const recommendedSettings = {
     },
     buy_score: {
         strength_weight: 2,
+        strength_threshold_low: 110,
         strength_threshold: 130,
         volume_spike_weight: 2,
+        volume_spike_threshold_low: 150,
         volume_spike_threshold: 200,
         orderbook_weight: 1,
         orderbook_threshold: 130,
@@ -280,8 +282,10 @@ function updateFormValues(settings) {
 
     const score = settings.buy_score || {};
     setValue('buy_score.strength_weight', score.strength_weight);
+    setValue('buy_score.strength_threshold_low', score.strength_threshold_low);
     setValue('buy_score.strength_threshold', score.strength_threshold);
     setValue('buy_score.volume_spike_weight', score.volume_spike_weight);
+    setValue('buy_score.volume_spike_threshold_low', score.volume_spike_threshold_low);
     setValue('buy_score.volume_spike_threshold', score.volume_spike_threshold);
     setValue('buy_score.orderbook_weight', score.orderbook_weight);
     setValue('buy_score.orderbook_threshold', score.orderbook_threshold);
@@ -367,8 +371,10 @@ function saveSettings(card = null) {
     // 매수 점수 설정
     settings.buy_score = {
         strength_weight: getNumberValue('buy_score.strength_weight'),
+        strength_threshold_low: getNumberValue('buy_score.strength_threshold_low'),
         strength_threshold: getNumberValue('buy_score.strength_threshold'),
         volume_spike_weight: getNumberValue('buy_score.volume_spike_weight'),
+        volume_spike_threshold_low: getNumberValue('buy_score.volume_spike_threshold_low'),
         volume_spike_threshold: getNumberValue('buy_score.volume_spike_threshold'),
         orderbook_weight: getNumberValue('buy_score.orderbook_weight'),
         orderbook_threshold: getNumberValue('buy_score.orderbook_threshold'),

@@ -210,8 +210,10 @@ class Config:
         },
         "buy_score": {
             "strength_weight": 2,
+            "strength_threshold_low": 110,
             "strength_threshold": 130,
             "volume_spike_weight": 2,
+            "volume_spike_threshold_low": 150,
             "volume_spike_threshold": 200,
             "orderbook_weight": 1,
             "orderbook_threshold": 130,
