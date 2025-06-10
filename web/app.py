@@ -513,7 +513,7 @@ def monitor_market():
                 
                 socketio.sleep(market_analyzer.update_interval)  # 1분 대기
             else:
-                # 중지 상태일 때는 모니터링 코인만 업데이트 (20초 주기)
+                # 중지 상태일 때는 모니터링 코인만 업데이트 (10초 주기)
                 try:
                     monitored_coins = market_analyzer.get_monitored_coins()
                     if monitored_coins:
@@ -524,7 +524,7 @@ def monitor_market():
                 except Exception as e:
                     logger.warning(f"모니터링 코인 업데이트 실패: {str(e)}")
                 
-                socketio.sleep(market_analyzer.monitoring_interval)  # 20초 대기
+                socketio.sleep(market_analyzer.monitoring_interval)  # 10초 대기
             
         except Exception as e:
             logger.error(f"모니터링 중 오류 발생: {str(e)}")
@@ -812,7 +812,7 @@ def background_updates():
                     'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                 })
 
-            time.sleep(20)  # 20초마다 업데이트
+            time.sleep(market_analyzer.monitoring_interval)  # 10초마다 업데이트
         except Exception as e:
             logger.error(f"백그라운드 업데이트 중 오류 발생: {str(e)}")
             time.sleep(5)  # 오류 발생 시 5초 대기 후 재시도
@@ -865,7 +865,7 @@ def init_bot_status():
         market_analyzer.start()
         
         # 모니터링 주기 설정
-        market_analyzer.monitoring_interval = 20  # 모니터링 주기 20초
+        market_analyzer.monitoring_interval = 10  # 모니터링 주기 10초
         market_analyzer.update_interval = 60     # 계좌/보유코인 업데이트 주기 60초
         
         # 초기 설정 로드 및 검증
