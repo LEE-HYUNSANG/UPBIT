@@ -6,9 +6,8 @@ from core.market_analyzer import MarketAnalyzer
 from core.upbit_api import UpbitAPI
 from core.telegram_notifier import TelegramNotifier
 import logging
-import socketio
 import asyncio
-from flask_socketio import SocketIO
+from app import socketio
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 
 # 설정 파일 경로
@@ -458,16 +457,12 @@ def logs_page():
     """로그 페이지 렌더링"""
     return render_template('logs.html')
 
-# Socket.IO 초기화
-socketio = SocketIO()
+# Socket.IO는 app.py에서 초기화된 인스턴스를 사용합니다.
 
 def init_app(app):
-    # Blueprint 등록
+    """Blueprint 및 Socket.IO 초기화"""
     app.register_blueprint(api)
-    
-    # Socket.IO 초기화
-    socketio.init_app(app)
-    
+
     # 초기 설정 파일 생성
     if not os.path.exists(SETTINGS_FILE):
-        save_settings(DEFAULT_SETTINGS) 
+        save_settings(DEFAULT_SETTINGS)
