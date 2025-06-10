@@ -392,36 +392,49 @@ class ConfigManager:
         Raises:
             ValueError: 유효하지 않은 설정값
         """
-        # 기본적인 값 범위만 간단히 검증한다.
-        trading = cfg.get('trading', {})
-        if trading.get('investment_amount', 1) <= 0:
-            raise ValueError("투자 금액은 0보다 커야 합니다.")
-        if trading.get('max_coins', 1) <= 0:
-            raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
+        # 거래 설정 검증
+        if 'trading' in config:
+            trading = config['trading']
+            if 'coin_selection' in trading:
+                coin_selection = trading['coin_selection']
+                if 'min_price' in coin_selection and coin_selection['min_price'] < 0:
+                    raise ValueError("최소 코인 가격은 0 이상이어야 합니다.")
+                if 'max_price' in coin_selection and coin_selection['max_price'] <= 0:
+                    raise ValueError("최대 코인 가격은 0보다 커야 합니다.")
+                if ('min_price' in coin_selection and 'max_price' in coin_selection and
+                    coin_selection['min_price'] >= coin_selection['max_price']):
+                    raise ValueError("최대 코인 가격은 최소 코인 가격보다 커야 합니다.")
+                if 'min_volume_24h' in coin_selection and coin_selection['min_volume_24h'] < 0:
+                    raise ValueError("24시간 거래대금은 0 이상이어야 합니다.")
+                if 'min_volume_1h' in coin_selection and coin_selection['min_volume_1h'] < 0:
+                    raise ValueError("1시간 거래대금은 0 이상이어야 합니다.")
+                if 'min_tick_ratio' in coin_selection and coin_selection['min_tick_ratio'] < 0:
+                    raise ValueError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
+            
+            if 'investment_amount' in trading and trading['investment_amount'] <= 0:
+                raise ValueError("투자 금액은 0보다 커야 합니다.")
+            if 'max_coins' in trading and trading['max_coins'] <= 0:
+                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
 
-        coin = trading.get('coin_selection', {})
-        if coin.get('min_price', 0) < 0:
-            raise ValueError("최소 코인 가격은 0 이상이어야 합니다.")
-        if coin.get('max_price', 0) and coin.get('max_price') <= coin.get('min_price', 0):
-            raise ValueError("최대 코인 가격은 최소 코인 가격보다 커야 합니다.")
-        if coin.get('min_volume_24h', 0) < 0:
-            raise ValueError("24시간 거래대금은 0 이상이어야 합니다.")
-        if coin.get('min_volume_1h', 0) < 0:
-            raise ValueError("1시간 거래대금은 0 이상이어야 합니다.")
-        if coin.get('min_tick_ratio', 0) < 0:
-            raise ValueError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
+        if 'signals' in config:
+            signals = config['signals']
+            common = signals.get('common_conditions', {})
+            rsi = common.get('rsi', {})
+            if rsi.get('enabled', False):
+                period = rsi.get('period', 0)
+                if not isinstance(period, (int, float)) or not (0 < period <= 100):
+                    raise ValueError("RSI 기간은 1에서 100 사이여야 합니다.")
 
-        rsi_section = cfg.get('signals', {}).get('common_conditions', {}).get('rsi', {})
-        rsi_enabled = rsi_section.get('enabled', cfg.get('rsi_enabled'))
-        rsi_period = rsi_section.get('period', cfg.get('rsi_period'))
-        if rsi_enabled and (rsi_period is None or rsi_period <= 0):
-            raise ValueError("RSI 기간은 0보다 커야 합니다.")
-
-        sell_section = cfg.get('signals', {}).get('sell_conditions', {})
-        sl_enabled = sell_section.get('stop_loss', {}).get('enabled', cfg.get('stop_loss_enabled'))
-        tp_enabled = sell_section.get('take_profit', {}).get('enabled', cfg.get('take_profit_enabled'))
-        sl = sell_section.get('stop_loss', {}).get('threshold', cfg.get('stop_loss'))
-        tp = sell_section.get('take_profit', {}).get('threshold', cfg.get('take_profit'))
-        sl_val = abs(sl) if sl is not None else None
-        if sl_enabled and tp_enabled and sl_val is not None and tp is not None and sl >= 0 and sl_val >= tp:
-            raise ValueError("손절가가 익절가보다 크거나 같습니다.")
+            sell = signals.get('sell_conditions', {})
+            stop_loss = sell.get('stop_loss', {})
+            take_profit = sell.get('take_profit', {})
+            if (
+                stop_loss.get('enabled', False)
+                and take_profit.get('enabled', False)
+                and 'threshold' in stop_loss
+                and 'threshold' in take_profit
+            ):
+                sl_val = abs(float(stop_loss['threshold']))
+                tp_val = float(take_profit['threshold'])
+                if sl_val >= tp_val:
+                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
