@@ -1,5 +1,4 @@
 import time
-import json
 import math
 from typing import Dict, List, Optional
 from core.upbit_api import UpbitAPI
@@ -7,6 +6,7 @@ from core.order_manager import OrderManager
 from ..data.market_data import MarketData
 from ..strategies.one_min_strategy import OneMinStrategy
 from core.logger import TradingLogger
+from config.order_defaults import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class TradingBot:
     def __init__(self, settings: Dict, access_key: str, secret_key: str):
@@ -32,19 +32,13 @@ class TradingBot:
         # 전략 초기화
         self.strategy = OneMinStrategy(settings, self.exchange)
 
-        # 매수 설정 로드
-        try:
-            with open("config/buy_settings.json", "r", encoding="utf-8") as f:
-                self.buy_settings = json.load(f)
-        except Exception:
-            self.buy_settings = {}
-
-        # 매도 설정 로드
-        try:
-            with open("config/sell_settings.json", "r", encoding="utf-8") as f:
-                self.sell_settings = json.load(f)
-        except Exception:
-            self.sell_settings = {}
+        # 주문 설정
+        self.buy_settings = settings.get(
+            "buy_settings", DEFAULT_BUY_SETTINGS.copy()
+        )
+        self.sell_settings = settings.get(
+            "sell_settings", DEFAULT_SELL_SETTINGS.copy()
+        )
 
         # 실행 상태
         self.is_running = False
