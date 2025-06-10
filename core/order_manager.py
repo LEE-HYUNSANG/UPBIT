@@ -58,7 +58,7 @@ class OrderManager:
             orderbook = self.api.get_orderbook(market)
             if not orderbook:
                 logger.error(f"{market}: 호가 정보 조회 실패")
-                return False, None
+                return False, {'error': '호가 정보 조회 실패'}
 
             ask_price = float(orderbook['orderbook_units'][0]['ask_price'])
             bid_price = float(orderbook['orderbook_units'][0]['bid_price'])
@@ -148,7 +148,7 @@ class OrderManager:
             orderbook = self.api.get_orderbook(market)
             if not orderbook:
                 logger.error(f"{market}: 호가 정보 조회 실패")
-                return False, None
+                return False, {'error': '호가 정보 조회 실패'}
 
             ask_price = float(orderbook['orderbook_units'][0]['ask_price'])
             bid_price = float(orderbook['orderbook_units'][0]['bid_price'])
@@ -224,7 +224,7 @@ class OrderManager:
             orderbook = self.api.get_orderbook(market)
             if not orderbook:
                 logger.error(f"{market}: 호가 정보 조회 실패")
-                return False, None
+                return False, {'error': '호가 정보 조회 실패'}
 
             ask_price = float(orderbook['orderbook_units'][0]['ask_price'])
             bid_price = float(orderbook['orderbook_units'][0]['bid_price'])
@@ -299,6 +299,24 @@ class OrderManager:
         success, order = self._place_limit_order(market, amount, first_type, first_wait)
         if success:
             return True, order
+
         if second_wait > 0:
-            return self._place_limit_order(market, amount, second_type, second_wait)
-        return False, order
+            success, order = self._place_limit_order(market, amount, second_type, second_wait)
+            if success:
+                return True, order
+
+        logger.info(f"{market}: 지정가 매수 실패, 시장가 매수 시도")
+        market_order = self.api.place_order(
+            market=market,
+            side='bid',
+            price=amount,
+            ord_type='price'
+        )
+
+        if not market_order or ('error' in market_order):
+            error_detail = market_order.get('error') if isinstance(market_order, dict) else 'API 요청 실패'
+            logger.error(f"{market}: 시장가 매수 실패 - {error_detail}")
+            return False, {'error': error_detail}
+
+        success, final_order = self._wait_for_order(market_order['uuid'], 10)
+        return success, final_order

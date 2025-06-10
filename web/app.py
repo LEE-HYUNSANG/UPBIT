@@ -37,7 +37,7 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="eventlet",  # 웹소켓 지원을 위해 eventlet 사용
+    async_mode=os.environ.get("SOCKETIO_ASYNC_MODE", "eventlet"),
     logger=True,
     engineio_logger=True,
     ping_timeout=60,   # 기본값보다 넉넉하게 설정하여 타임아웃 방지

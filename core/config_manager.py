@@ -349,3 +349,7 @@ class ConfigManager:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
                 raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
+
+        if 'rsi_enabled' in cfg and cfg.get('rsi_enabled'):
+            if 'rsi_period' in cfg and cfg['rsi_period'] <= 0:
+                raise ValueError("RSI 기간은 0보다 커야 합니다.")
