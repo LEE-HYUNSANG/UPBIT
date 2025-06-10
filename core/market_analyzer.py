@@ -38,7 +38,9 @@ import threading
 import time
 from collections import deque
 from functools import wraps
-from config.default_settings import DEFAULT_SETTINGS
+from config.default_settings import DEFAULT_SETTINGS, DEFAULT_BUY_SETTINGS
+from .order_manager import OrderManager
+from .upbit_api import UpbitAPI
 
 # 환경변수 로드
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
@@ -98,6 +100,10 @@ class MarketAnalyzer:
 
         if not self.access_key or not self.secret_key:
             logger.warning("API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+        
+        # Upbit API 및 주문 관리자 초기화
+        self.api = UpbitAPI(self.access_key, self.secret_key)
+        self.order_manager = OrderManager(self.api)
             
         # 설정 로드
         self.config = self.load_config()
@@ -1291,10 +1297,32 @@ class MarketAnalyzer:
             else:
                 error_msg = f"{market} 매수 주문 실패"
                 logger.error(error_msg)
-                return {'success': False, 'error': error_msg}
-                
+            return {'success': False, 'error': error_msg}
+
         except Exception as e:
             error_msg = f"시장가 매수 중 오류 발생: {str(e)}"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+
+    def buy_with_settings(self, market: str) -> Dict:
+        """설정 기반 지정가 매수"""
+        try:
+            settings = self.get_buy_settings() or DEFAULT_BUY_SETTINGS.copy()
+            success, order = self.order_manager.buy_with_settings(market, settings)
+            if success and order:
+                return {
+                    'success': True,
+                    'data': {
+                        'market': market,
+                        'order_type': 'limit_buy',
+                        'order_details': order
+                    }
+                }
+            error_msg = f"{market} 매수 주문 실패"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+        except Exception as e:
+            error_msg = f"설정 기반 매수 중 오류 발생: {str(e)}"
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
 

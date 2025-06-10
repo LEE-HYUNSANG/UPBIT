@@ -829,11 +829,11 @@ def background_updates():
 
 @socketio.on('market_buy')
 def handle_market_buy(data):
-    """개별 코인 시장가 매수"""
+    """개별 코인 매수 (설정 기반)"""
     try:
         market = data['market']
         logger.info(f"코인 매수 요청: {market}")
-        result = market_analyzer.market_buy(market)
+        result = market_analyzer.buy_with_settings(market)
 
         if result['success']:
             emit('market_buy_result', {
