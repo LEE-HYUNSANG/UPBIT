@@ -13,6 +13,7 @@ import json
 import sys
 from datetime import datetime
 import logging
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -47,8 +48,9 @@ socketio = SocketIO(
 )
 
 # 로깅 설정
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, log_level, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('trading.log', encoding='utf-8'),

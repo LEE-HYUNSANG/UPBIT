@@ -12,9 +12,11 @@ from typing import Dict, List, Optional
 import pandas as pd
 import numpy as np
 import logging
+import os
 
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, log_level, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('trading.log', encoding='utf-8'),

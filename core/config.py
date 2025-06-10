@@ -48,12 +48,14 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 import logging
+import os
 from config.order_defaults import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 from config.default_settings import DEFAULT_SETTINGS
 
 # 로깅 설정
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, log_level, logging.INFO),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('trading.log', encoding='utf-8'),
