@@ -109,32 +109,6 @@
         "confidence_threshold": 0.65
       }
     },
-    "parameters": {
-      "bull": {
-        "ema_short_1m": 7,
-        "ema_long_1m": 21,
-        "rsi_threshold": 65,
-        "atr_threshold": 0.0012,
-        "profit_percent": 1.5,
-        "stop_loss_percent": 1.0
-      },
-      "bear": {
-        "ema_short_1m": 9,
-        "ema_long_1m": 25,
-        "rsi_threshold": 60,
-        "atr_threshold": 0.0015,
-        "profit_percent": 1.5,
-        "stop_loss_percent": 1.0
-      },
-      "neutral": {
-        "ema_short_1m": 8,
-        "ema_long_1m": 23,
-        "rsi_threshold": 63,
-        "atr_threshold": 0.0013,
-        "profit_percent": 1.5,
-        "stop_loss_percent": 1.0
-      }
-    },
     "weights": {
       "trend": 0.35,
       "volatility": 0.25,
