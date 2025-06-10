@@ -34,10 +34,11 @@ app = Flask(__name__,
 app.config['SECRET_KEY'] = 'secret!'
 
 # Socket.IO 초기화
+# eventlet을 사용하여 안정적인 웹소켓 통신을 보장한다
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="threading",  # eventlet을 사용하지 않음
+    async_mode="eventlet",  # 웹소켓 지원을 위해 eventlet 사용
     logger=True,
     engineio_logger=True
 )
