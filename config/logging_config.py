@@ -5,7 +5,8 @@ from datetime import datetime
 
 def setup_logging():
     # 로그 디렉토리 생성
-    log_dir = 'logs'
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    log_dir = os.path.join(base_dir, 'logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
