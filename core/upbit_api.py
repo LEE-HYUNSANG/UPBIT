@@ -20,11 +20,13 @@ import logging
 import numpy as np
 from urllib.parse import urlencode
 from dotenv import load_dotenv
+from pathlib import Path
 
 class UpbitAPI:
     def __init__(self, access_key: str = None, secret_key: str = None):
         """UpbitAPI 클래스 초기화"""
-        load_dotenv()
+        dotenv_path = Path(__file__).resolve().parents[1] / '.env'
+        load_dotenv(dotenv_path)
         self.logger = logging.getLogger('UpbitAPI')
         self.access_key = access_key or os.getenv('UPBIT_ACCESS_KEY')
         self.secret_key = secret_key or os.getenv('UPBIT_SECRET_KEY')

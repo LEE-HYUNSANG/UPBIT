@@ -41,7 +41,8 @@ from functools import wraps
 from config.default_settings import DEFAULT_SETTINGS
 
 # 환경변수 로드
-load_dotenv()
+dotenv_path = Path(__file__).resolve().parents[1] / '.env'
+load_dotenv(dotenv_path)
 logger = logging.getLogger(__name__)
 
 def safe_float(value: Any, default: float = 0.0) -> float:

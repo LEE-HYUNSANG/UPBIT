@@ -24,7 +24,8 @@ from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오�
 from core.constants import DEFAULT_COIN_SELECTION
 
 # .env 파일 로드
-load_dotenv()
+dotenv_path = Path(__file__).resolve().parents[1] / '.env'
+load_dotenv(dotenv_path)
 
 # 테스트 환경을 위한 기본 API 키 값 설정
 os.environ.setdefault("UPBIT_ACCESS_KEY", "test")

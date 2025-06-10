@@ -17,9 +17,11 @@ from typing import Optional, Dict
 from telegram import Bot
 from telegram.error import TelegramError
 from dotenv import load_dotenv
+from pathlib import Path
 import logging
 
-load_dotenv()
+dotenv_path = Path(__file__).resolve().parents[1] / '.env'
+load_dotenv(dotenv_path)
 
 logger = logging.getLogger(__name__)
 
