@@ -862,7 +862,15 @@ class MarketAnalyzer:
                         continue
 
                     df_1m = self.prepare_dataframe(candles_1m)
-                    score = self.calculate_buy_score(market_code, df_1m)
+                    score, formula = self.calculate_buy_score(market_code, df_1m)
+
+                    cmp = '>' if score >= threshold else '<'
+                    msg = (
+                        f"[{market_code}] buy_score = {score:.2f} ( {cmp} score_threshold = {threshold} | {formula} )"
+                    )
+                    if score >= threshold:
+                        msg += " score_threshold를 넘었다"
+                    logger.info(msg)
 
                     coin_data = {
                         'market': market_code,
@@ -1502,10 +1510,15 @@ class MarketAnalyzer:
             logger.error(f"호가 조회 실패: {str(e)}")
             return None
 
-    def calculate_buy_score(self, market: str, df_1m: pd.DataFrame) -> float:
-        """점수 기반 매수 스코어 계산"""
+    def calculate_buy_score(self, market: str, df_1m: pd.DataFrame) -> Tuple[float, str]:
+        """점수 기반 매수 스코어 계산
+
+        Returns:
+            Tuple[float, str]: 계산된 점수와 계산식 문자열
+        """
         conf = self.config.get('buy_score', {})
         score = 0.0
+        parts = []
 
         # 1. 체결강도
         if conf.get('strength_weight', 0) > 0:
@@ -1516,8 +1529,11 @@ class MarketAnalyzer:
                 strength = (buy_vol / sell_vol * 100) if sell_vol else 0
                 if strength >= conf.get('strength_threshold', 130):
                     score += conf['strength_weight']
+                    parts.append(f"strength({conf['strength_weight']})")
                 elif strength >= conf.get('strength_threshold_low', 110):
-                    score += conf['strength_weight'] / 2
+                    val = conf['strength_weight'] / 2
+                    score += val
+                    parts.append(f"strength({val})")
 
         # 2. 실시간 거래량 급증
         if conf.get('volume_spike_weight', 0) > 0 and len(df_1m) > 5:
@@ -1526,8 +1542,11 @@ class MarketAnalyzer:
             if avg_vol:
                 if recent_vol >= avg_vol * (conf.get('volume_spike_threshold', 200) / 100):
                     score += conf['volume_spike_weight']
+                    parts.append(f"volume({conf['volume_spike_weight']})")
                 elif recent_vol >= avg_vol * (conf.get('volume_spike_threshold_low', 150) / 100):
-                    score += conf['volume_spike_weight'] / 2
+                    val = conf['volume_spike_weight'] / 2
+                    score += val
+                    parts.append(f"volume({val})")
 
         # 3. 호가 잔량 불균형
         if conf.get('orderbook_weight', 0) > 0:
@@ -1537,14 +1556,17 @@ class MarketAnalyzer:
                 ask = float(ob.get('total_ask_size', 0))
                 if ask and (bid / ask * 100) >= conf.get('orderbook_threshold', 130):
                     score += conf['orderbook_weight']
+                    parts.append(f"orderbook({conf['orderbook_weight']})")
 
         # 4. 단기 등락률
         if conf.get('momentum_weight', 0) > 0 and len(df_1m) > 4:
             change = (df_1m['close'].iloc[-1] / df_1m['close'].iloc[-4] - 1) * 100
             if change >= conf.get('momentum_threshold', 0.3):
                 score += conf['momentum_weight']
+                parts.append(f"momentum({conf['momentum_weight']})")
             elif change <= -conf.get('momentum_threshold', 0.3):
-                return 0.0
+                parts.append("momentum_penalty")
+                return 0.0, " + ".join(parts)
 
         # 5. 전고점 근접 여부
         if conf.get('near_high_weight', 0) > 0:
@@ -1554,6 +1576,7 @@ class MarketAnalyzer:
                 price = df_1m['close'].iloc[-1]
                 if prev_high and abs(price - prev_high) / prev_high <= abs(conf.get('near_high_threshold', -1)) / 100:
                     score += conf['near_high_weight']
+                    parts.append(f"near_high({conf['near_high_weight']})")
 
         # 6. 추세 전환 징후
         if conf.get('trend_reversal_weight', 0) > 0 and len(df_1m) > 16:
@@ -1562,6 +1585,7 @@ class MarketAnalyzer:
             current = df_1m['close'].iloc[-1]
             if past_15 > current and current > past_5:
                 score += conf['trend_reversal_weight']
+                parts.append(f"trend_rev({conf['trend_reversal_weight']})")
 
         # 7. Williams %R
         if conf.get('williams_weight', 0) > 0 and conf.get('williams_enabled', True) and len(df_1m) >= 14:
@@ -1571,6 +1595,7 @@ class MarketAnalyzer:
                 wr = (hh - df_1m['close'].iloc[-1]) / (hh - ll) * -100
                 if wr <= -80:
                     score += conf['williams_weight']
+                    parts.append(f"williams({conf['williams_weight']})")
 
         # 8. Stochastic
         if conf.get('stochastic_weight', 0) > 0 and conf.get('stochastic_enabled', True) and len(df_1m) >= 14:
@@ -1580,6 +1605,7 @@ class MarketAnalyzer:
             d = k.rolling(3).mean()
             if k.iloc[-1] < 20 and d.iloc[-1] < 20:
                 score += conf['stochastic_weight']
+                parts.append(f"stochastic({conf['stochastic_weight']})")
 
         # 9. MACD
         if conf.get('macd_weight', 0) > 0 and conf.get('macd_enabled', True):
@@ -1589,8 +1615,10 @@ class MarketAnalyzer:
             signal = macd.ewm(span=9).mean()
             if macd.iloc[-1] > signal.iloc[-1] and macd.iloc[-2] <= signal.iloc[-2]:
                 score += conf['macd_weight']
+                parts.append(f"macd({conf['macd_weight']})")
 
-        return score
+        formula = " + ".join(parts) if parts else "0"
+        return score, formula
 
 
     def get_buy_settings(self) -> Dict:
