@@ -303,94 +303,102 @@ function updateFormValues(settings) {
 
 // 설정 저장
 function saveSettings(card = null) {
-    const settings = {
-        trading: {
-            investment_amount: getNumberValue('trading.investment_amount'),
-            max_coins: getNumberValue('trading.max_coins'),
-            coin_selection: {
-                min_price: getNumberValue('trading.min_price'),
-                max_price: getNumberValue('trading.max_price'),
-                min_volume_24h: getNumberValue('trading.min_volume_24h'),
-                min_volume_1h: getNumberValue('trading.min_volume_1h'),
-                min_tick_ratio: getNumberValue('trading.min_tick_ratio'),
-                excluded_coins: excludedCoins
-            }
+    // 기존 설정을 복사하여 누락되는 섹션이 없도록 한다
+    const settings = JSON.parse(JSON.stringify(currentSettings));
+
+    // 거래 설정
+    settings.trading.investment_amount = getNumberValue('trading.investment_amount');
+    settings.trading.max_coins = getNumberValue('trading.max_coins');
+    settings.trading.coin_selection = {
+        min_price: getNumberValue('trading.min_price'),
+        max_price: getNumberValue('trading.max_price'),
+        min_volume_24h: getNumberValue('trading.min_volume_24h'),
+        min_volume_1h: getNumberValue('trading.min_volume_1h'),
+        min_tick_ratio: getNumberValue('trading.min_tick_ratio'),
+        excluded_coins: excludedCoins
+    };
+
+    // 매수 조건 설정
+    settings.signals.buy_conditions = {
+        bull: {
+            rsi: getNumberValue('signals.buy_conditions.bull.rsi'),
+            sigma: getNumberValue('signals.buy_conditions.bull.sigma'),
+            vol_prev: getNumberValue('signals.buy_conditions.bull.vol_prev'),
+            vol_ma: getNumberValue('signals.buy_conditions.bull.vol_ma'),
+            slope: getNumberValue('signals.buy_conditions.bull.slope')
         },
-        signals: {
-            buy_conditions: {
-                bull: {
-                    rsi: getNumberValue('signals.buy_conditions.bull.rsi'),
-                    sigma: getNumberValue('signals.buy_conditions.bull.sigma'),
-                    vol_prev: getNumberValue('signals.buy_conditions.bull.vol_prev'),
-                    vol_ma: getNumberValue('signals.buy_conditions.bull.vol_ma'),
-                    slope: getNumberValue('signals.buy_conditions.bull.slope')
-                },
-                range: {
-                    rsi: getNumberValue('signals.buy_conditions.range.rsi'),
-                    sigma: getNumberValue('signals.buy_conditions.range.sigma'),
-                    vol_prev: getNumberValue('signals.buy_conditions.range.vol_prev'),
-                    vol_ma: getNumberValue('signals.buy_conditions.range.vol_ma'),
-                    slope: getNumberValue('signals.buy_conditions.range.slope')
-                },
-                bear: {
-                    rsi: getNumberValue('signals.buy_conditions.bear.rsi'),
-                    sigma: getNumberValue('signals.buy_conditions.bear.sigma'),
-                    vol_prev: getNumberValue('signals.buy_conditions.bear.vol_prev'),
-                    vol_ma: getNumberValue('signals.buy_conditions.bear.vol_ma'),
-                    slope: getNumberValue('signals.buy_conditions.bear.slope')
-                },
-                enabled: {
-                    trend_filter: getBooleanValue('signals.buy_conditions.enabled.trend_filter'),
-                    golden_cross: getBooleanValue('signals.buy_conditions.enabled.golden_cross'),
-                    rsi: getBooleanValue('signals.buy_conditions.enabled.rsi'),
-                    bollinger: getBooleanValue('signals.buy_conditions.enabled.bollinger'),
-                    volume_surge: getBooleanValue('signals.buy_conditions.enabled.volume_surge')
-                }
-            }
+        range: {
+            rsi: getNumberValue('signals.buy_conditions.range.rsi'),
+            sigma: getNumberValue('signals.buy_conditions.range.sigma'),
+            vol_prev: getNumberValue('signals.buy_conditions.range.vol_prev'),
+            vol_ma: getNumberValue('signals.buy_conditions.range.vol_ma'),
+            slope: getNumberValue('signals.buy_conditions.range.slope')
         },
-        notifications: {
-            trade: {
-                start: getBooleanValue('notifications.trade.start'),
-                complete: getBooleanValue('notifications.trade.complete'),
-                profit_loss: getBooleanValue('notifications.trade.profit_loss')
-            },
-            system: {
-                error: getBooleanValue('notifications.system.error'),
-                daily_summary: getBooleanValue('notifications.system.daily_summary'),
-                signal: getBooleanValue('notifications.system.signal')
-            }
+        bear: {
+            rsi: getNumberValue('signals.buy_conditions.bear.rsi'),
+            sigma: getNumberValue('signals.buy_conditions.bear.sigma'),
+            vol_prev: getNumberValue('signals.buy_conditions.bear.vol_prev'),
+            vol_ma: getNumberValue('signals.buy_conditions.bear.vol_ma'),
+            slope: getNumberValue('signals.buy_conditions.bear.slope')
         },
-        buy_score: {
-            strength_weight: getNumberValue('buy_score.strength_weight'),
-            strength_threshold: getNumberValue('buy_score.strength_threshold'),
-            volume_spike_weight: getNumberValue('buy_score.volume_spike_weight'),
-            volume_spike_threshold: getNumberValue('buy_score.volume_spike_threshold'),
-            orderbook_weight: getNumberValue('buy_score.orderbook_weight'),
-            orderbook_threshold: getNumberValue('buy_score.orderbook_threshold'),
-            momentum_weight: getNumberValue('buy_score.momentum_weight'),
-            momentum_threshold: getNumberValue('buy_score.momentum_threshold'),
-            near_high_weight: getNumberValue('buy_score.near_high_weight'),
-            near_high_threshold: getNumberValue('buy_score.near_high_threshold'),
-            trend_reversal_weight: getNumberValue('buy_score.trend_reversal_weight'),
-            williams_weight: getNumberValue('buy_score.williams_weight'),
-            williams_enabled: document.getElementById('buy_score.williams_enabled').value === 'true',
-            stochastic_weight: getNumberValue('buy_score.stochastic_weight'),
-            stochastic_enabled: document.getElementById('buy_score.stochastic_enabled').value === 'true',
-            macd_weight: getNumberValue('buy_score.macd_weight'),
-            macd_enabled: document.getElementById('buy_score.macd_enabled').value === 'true',
-            score_threshold: getNumberValue('buy_score.score_threshold')
-        },
-        buy_settings: {
-            ENTRY_SIZE_INITIAL: getNumberValue('buy_settings.ENTRY_SIZE_INITIAL'),
-            LIMIT_WAIT_SEC_1: getNumberValue('buy_settings.LIMIT_WAIT_SEC_1'),
-            "1st_Bid_Price": document.getElementById('buy_settings.1st_Bid_Price').value,
-            LIMIT_WAIT_SEC_2: getNumberValue('buy_settings.LIMIT_WAIT_SEC_2'),
-            "2nd_Bid_Price": document.getElementById('buy_settings.2nd_Bid_Price').value
-        },
-        sell_settings: {
-            TP_PCT: getNumberValue('sell_settings.TP_PCT'),
-            MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
+        enabled: {
+            trend_filter: getBooleanValue('signals.buy_conditions.enabled.trend_filter'),
+            golden_cross: getBooleanValue('signals.buy_conditions.enabled.golden_cross'),
+            rsi: getBooleanValue('signals.buy_conditions.enabled.rsi'),
+            bollinger: getBooleanValue('signals.buy_conditions.enabled.bollinger'),
+            volume_surge: getBooleanValue('signals.buy_conditions.enabled.volume_surge')
         }
+    };
+
+    // 알림 설정
+    settings.notifications = {
+        trade: {
+            start: getBooleanValue('notifications.trade.start'),
+            complete: getBooleanValue('notifications.trade.complete'),
+            profit_loss: getBooleanValue('notifications.trade.profit_loss')
+        },
+        system: {
+            error: getBooleanValue('notifications.system.error'),
+            daily_summary: getBooleanValue('notifications.system.daily_summary'),
+            signal: getBooleanValue('notifications.system.signal')
+        }
+    };
+
+    // 매수 점수 설정
+    settings.buy_score = {
+        strength_weight: getNumberValue('buy_score.strength_weight'),
+        strength_threshold: getNumberValue('buy_score.strength_threshold'),
+        volume_spike_weight: getNumberValue('buy_score.volume_spike_weight'),
+        volume_spike_threshold: getNumberValue('buy_score.volume_spike_threshold'),
+        orderbook_weight: getNumberValue('buy_score.orderbook_weight'),
+        orderbook_threshold: getNumberValue('buy_score.orderbook_threshold'),
+        momentum_weight: getNumberValue('buy_score.momentum_weight'),
+        momentum_threshold: getNumberValue('buy_score.momentum_threshold'),
+        near_high_weight: getNumberValue('buy_score.near_high_weight'),
+        near_high_threshold: getNumberValue('buy_score.near_high_threshold'),
+        trend_reversal_weight: getNumberValue('buy_score.trend_reversal_weight'),
+        williams_weight: getNumberValue('buy_score.williams_weight'),
+        williams_enabled: document.getElementById('buy_score.williams_enabled').value === 'true',
+        stochastic_weight: getNumberValue('buy_score.stochastic_weight'),
+        stochastic_enabled: document.getElementById('buy_score.stochastic_enabled').value === 'true',
+        macd_weight: getNumberValue('buy_score.macd_weight'),
+        macd_enabled: document.getElementById('buy_score.macd_enabled').value === 'true',
+        score_threshold: getNumberValue('buy_score.score_threshold')
+    };
+
+    // 매수 주문 설정
+    settings.buy_settings = {
+        ENTRY_SIZE_INITIAL: getNumberValue('buy_settings.ENTRY_SIZE_INITIAL'),
+        LIMIT_WAIT_SEC_1: getNumberValue('buy_settings.LIMIT_WAIT_SEC_1'),
+        "1st_Bid_Price": document.getElementById('buy_settings.1st_Bid_Price').value,
+        LIMIT_WAIT_SEC_2: getNumberValue('buy_settings.LIMIT_WAIT_SEC_2'),
+        "2nd_Bid_Price": document.getElementById('buy_settings.2nd_Bid_Price').value
+    };
+
+    // 매도 주문 설정
+    settings.sell_settings = {
+        TP_PCT: getNumberValue('sell_settings.TP_PCT'),
+        MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
     };
 
     fetch('/api/settings', {
