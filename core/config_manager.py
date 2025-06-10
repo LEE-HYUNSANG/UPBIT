@@ -36,6 +36,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 from . import config
+from .config import ConfigError
 from config.default_settings import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class ConfigManager:
@@ -139,7 +140,8 @@ class ConfigManager:
         if any(k in config for k in [
             "rsi_enabled", "rsi_period", "rsi_buy_enabled",
             "rsi_buy_threshold", "rsi_sell_enabled", "rsi_sell_threshold",
-            "bollinger_enabled", "stop_loss_enabled", "stop_loss"]):
+            "bollinger_enabled", "stop_loss_enabled", "stop_loss",
+            "take_profit_enabled", "take_profit"]):
             signals = nested.get("signals", {})
             common = signals.get("common_conditions", {})
             rsi_common = common.get("rsi", {})
@@ -186,6 +188,13 @@ class ConfigManager:
                     # Config 모듈의 검증 규칙을 통과하도록 음수 값으로 저장
                     sl["threshold"] = -abs(config["stop_loss"])
                 sell["stop_loss"] = sl
+            if "take_profit_enabled" in config or "take_profit" in config:
+                tp = sell.get("take_profit", {})
+                if "take_profit_enabled" in config:
+                    tp["enabled"] = config["take_profit_enabled"]
+                if "take_profit" in config:
+                    tp["threshold"] = config["take_profit"]
+                sell["take_profit"] = tp
             if sell:
                 signals.setdefault("sell_conditions", {}).update(sell)
 
@@ -316,6 +325,16 @@ class ConfigManager:
             IOError: 파일 저장 실패
         """
         try:
+            # 입력 값 기반 기본 검증
+            if (
+                new_config.get('stop_loss_enabled')
+                and new_config.get('take_profit_enabled')
+                and new_config.get('stop_loss') is not None
+                and new_config.get('take_profit') is not None
+            ):
+                if new_config['stop_loss'] >= new_config['take_profit']:
+                    raise ValueError("손절가가 익절가보다 크거나 같습니다.")
+
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
@@ -358,36 +377,46 @@ class ConfigManager:
             print(f"설정 업데이트 실패: {e}")
             raise ValueError(f"설정 업데이트 실패: {e}")
             
-    def _validate_config(self, config: Dict[str, Any]):
+    def _validate_config(self, cfg: Dict[str, Any]):
         """
         설정값 유효성 검사
         
         Args:
-            config: Dict[str, Any] - 검사할 설정값
+            cfg: Dict[str, Any] - 검사할 설정값
             
         Raises:
             ValueError: 유효하지 않은 설정값
         """
-        # 거래 설정 검증
-        if 'trading' in config:
-            trading = config['trading']
-            if 'coin_selection' in trading:
-                coin_selection = trading['coin_selection']
-                if 'min_price' in coin_selection and coin_selection['min_price'] < 0:
-                    raise ValueError("최소 코인 가격은 0 이상이어야 합니다.")
-                if 'max_price' in coin_selection and coin_selection['max_price'] <= 0:
-                    raise ValueError("최대 코인 가격은 0보다 커야 합니다.")
-                if ('min_price' in coin_selection and 'max_price' in coin_selection and
-                    coin_selection['min_price'] >= coin_selection['max_price']):
-                    raise ValueError("최대 코인 가격은 최소 코인 가격보다 커야 합니다.")
-                if 'min_volume_24h' in coin_selection and coin_selection['min_volume_24h'] < 0:
-                    raise ValueError("24시간 거래대금은 0 이상이어야 합니다.")
-                if 'min_volume_1h' in coin_selection and coin_selection['min_volume_1h'] < 0:
-                    raise ValueError("1시간 거래대금은 0 이상이어야 합니다.")
-                if 'min_tick_ratio' in coin_selection and coin_selection['min_tick_ratio'] < 0:
-                    raise ValueError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
-            
-            if 'investment_amount' in trading and trading['investment_amount'] <= 0:
-                raise ValueError("투자 금액은 0보다 커야 합니다.")
-            if 'max_coins' in trading and trading['max_coins'] <= 0:
-                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.") 
+        # 기본적인 값 범위만 간단히 검증한다.
+        trading = cfg.get('trading', {})
+        if trading.get('investment_amount', 1) <= 0:
+            raise ValueError("투자 금액은 0보다 커야 합니다.")
+        if trading.get('max_coins', 1) <= 0:
+            raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
+
+        coin = trading.get('coin_selection', {})
+        if coin.get('min_price', 0) < 0:
+            raise ValueError("최소 코인 가격은 0 이상이어야 합니다.")
+        if coin.get('max_price', 0) and coin.get('max_price') <= coin.get('min_price', 0):
+            raise ValueError("최대 코인 가격은 최소 코인 가격보다 커야 합니다.")
+        if coin.get('min_volume_24h', 0) < 0:
+            raise ValueError("24시간 거래대금은 0 이상이어야 합니다.")
+        if coin.get('min_volume_1h', 0) < 0:
+            raise ValueError("1시간 거래대금은 0 이상이어야 합니다.")
+        if coin.get('min_tick_ratio', 0) < 0:
+            raise ValueError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
+
+        rsi_section = cfg.get('signals', {}).get('common_conditions', {}).get('rsi', {})
+        rsi_enabled = rsi_section.get('enabled', cfg.get('rsi_enabled'))
+        rsi_period = rsi_section.get('period', cfg.get('rsi_period'))
+        if rsi_enabled and (rsi_period is None or rsi_period <= 0):
+            raise ValueError("RSI 기간은 0보다 커야 합니다.")
+
+        sell_section = cfg.get('signals', {}).get('sell_conditions', {})
+        sl_enabled = sell_section.get('stop_loss', {}).get('enabled', cfg.get('stop_loss_enabled'))
+        tp_enabled = sell_section.get('take_profit', {}).get('enabled', cfg.get('take_profit_enabled'))
+        sl = sell_section.get('stop_loss', {}).get('threshold', cfg.get('stop_loss'))
+        tp = sell_section.get('take_profit', {}).get('threshold', cfg.get('take_profit'))
+        sl_val = abs(sl) if sl is not None else None
+        if sl_enabled and tp_enabled and sl_val is not None and tp is not None and sl >= 0 and sl_val >= tp:
+            raise ValueError("손절가가 익절가보다 크거나 같습니다.")
