@@ -23,7 +23,7 @@ class Position:
         self.entry_time = datetime.now()
 
 class TradingState:
-    def __init__(self, config_path: str = 'config/config.json'):
+    def __init__(self, config_path: str = 'config.json'):
         # 설정 로드
         with open(config_path, 'r') as f:
             self.config = json.load(f)
@@ -124,7 +124,7 @@ def check_buy_conditions(c1m: dict, c5m: dict = None, config: dict = None) -> Tu
         Tuple[bool, str, dict]: (매수 여부, 매수 이유, 상세 조건)
     """
     if not config:
-        with open('config/config.json', 'r') as f:
+        with open('config.json', 'r') as f:
             config = json.load(f)
             
     price_data = [float(candle['trade_price']) for candle in c1m]

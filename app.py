@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from config.logging_config import setup_logging
 from datetime import datetime
 from core.market_analyzer import MarketAnalyzer
+from core.constants import DEFAULT_COIN_SELECTION
 from pathlib import Path
 
 # 환경 변수 로드
@@ -22,11 +23,7 @@ DEFAULT_SETTINGS = {
     "trade_settings": {
         "base_amount": 10000,
         "max_positions": 5,
-        "min_price": 700,
-        "max_price": 26666,
-        "min_volume_24h": 1400000000,
-        "min_volume_1h": 100000000,
-        "min_tick_ratio": 0.04,
+        **DEFAULT_COIN_SELECTION,
         "use_stop_loss": True,
         "stop_loss": 5,
         "use_take_profit": True,
