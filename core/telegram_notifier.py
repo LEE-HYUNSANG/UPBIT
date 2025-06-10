@@ -19,6 +19,7 @@ from telegram.error import TelegramError
 from dotenv import load_dotenv
 from pathlib import Path
 import logging
+import requests
 
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
 if dotenv_path.exists():
@@ -467,14 +468,19 @@ class TelegramNotifier:
     def send_message_sync(self, message: str):
         """동기 방식으로 메시지 전송"""
         try:
-            self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='HTML'
+            response = requests.post(
+                f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
+                data={
+                    "chat_id": self.chat_id,
+                    "text": message,
+                    "parse_mode": "HTML",
+                },
+                timeout=10,
             )
+            response.raise_for_status()
             logger.info(f"텔레그램 메시지 전송 성공: {message[:50]}...")
             return True
-        except TelegramError as e:
+        except requests.RequestException as e:
             logger.error(f"텔레그램 메시지 전송 실패: {str(e)}")
             return False
 
