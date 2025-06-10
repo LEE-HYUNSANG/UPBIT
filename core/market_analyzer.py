@@ -38,7 +38,12 @@ import threading
 import time
 from collections import deque
 from functools import wraps
-from config.default_settings import DEFAULT_SETTINGS, DEFAULT_BUY_SETTINGS
+import math
+from config.default_settings import (
+    DEFAULT_SETTINGS,
+    DEFAULT_BUY_SETTINGS,
+    DEFAULT_SELL_SETTINGS,
+)
 from .order_manager import OrderManager
 from .upbit_api import UpbitAPI
 
@@ -712,6 +717,9 @@ class MarketAnalyzer:
                             if result.get('success'):
                                 self.auto_bought.add(coin['market'])
                                 logger.info(f"{coin['market']} 자동 매수 성공")
+                                order = result.get('data', {}).get('order_details')
+                                if order:
+                                    self._place_pre_sell(coin['market'], order)
                             else:
                                 logger.error(f"{coin['market']} 자동 매수 실패: {result.get('error')}")
 
@@ -1142,6 +1150,36 @@ class MarketAnalyzer:
             error_msg = f"설정 기반 매수 중 오류 발생: {str(e)}"
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
+
+    def _place_pre_sell(self, market: str, buy_order: Dict) -> None:
+        """매수 후 선매도 주문을 실행"""
+        try:
+            executed_volume = float(buy_order.get('executed_volume', 0))
+            if not executed_volume:
+                logger.warning(f"{market} 매수 체결 수량이 없어 선매도 주문을 건너뜁니다.")
+                return
+
+            avg_price = float(buy_order['price']) / executed_volume
+            settings = self.get_sell_settings() or DEFAULT_SELL_SETTINGS.copy()
+            tp_pct = float(settings.get('TP_PCT', 0))
+            min_ticks = int(settings.get('MINIMUM_TICKS', 2))
+
+            tick = self._get_tick_size(avg_price)
+            target_price = avg_price * (1 + tp_pct / 100)
+            target_price = math.ceil(target_price / tick) * tick
+            if target_price - avg_price < tick * min_ticks:
+                target_price = avg_price + tick * min_ticks
+                target_price = math.ceil(target_price / tick) * tick
+
+            sell_success, sell_order = self.order_manager.place_limit_sell(
+                market, executed_volume, target_price
+            )
+            if sell_success and sell_order:
+                logger.info(f"{market} 선매도 주문 완료 - uuid={sell_order['uuid']}")
+            else:
+                logger.error(f"{market} 선매도 주문 실패")
+        except Exception as e:
+            logger.error(f"선매도 주문 처리 중 오류 발생: {str(e)}")
 
     def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
         """캔들 데이터 조회"""
