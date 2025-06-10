@@ -108,7 +108,8 @@
         "stochastic_enabled": true,
         "macd_weight": 1,
         "macd_enabled": true,
-        "score_threshold": 6
+        "score_threshold": 6,
+        "score_thresholds": {}
     },
     "buy_settings": {
         "ENTRY_SIZE_INITIAL": 7000,

@@ -32,10 +32,19 @@ class OneMinStrategy:
             return False, 0.0
 
         score = self._calculate_score(symbol, df_1m)
-        threshold = self.settings.get('buy_score', {}).get('score_threshold', 0)
+        buy_conf = self.settings.get('buy_score', {})
+        thresholds = buy_conf.get('score_thresholds', {})
+        threshold = thresholds.get(symbol, buy_conf.get('score_threshold', 0))
 
         # 점수와 임계값을 항상 기록하여 디버깅에 활용한다
         self.logger.info(f"{symbol} 매수 점수 {score} / {threshold}")
+        if score >= threshold and getattr(self.logger, 'telegram', None):
+            try:
+                self.logger.telegram.send_message_sync(
+                    f"{symbol} 매수 점수 {score:.2f} / {threshold}"
+                )
+            except Exception:
+                pass
 
         return score >= threshold, score
 

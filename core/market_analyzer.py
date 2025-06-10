@@ -1073,7 +1073,8 @@ class MarketAnalyzer:
             'stochastic_enabled': bool(score.get('stochastic_enabled', True)),
             'macd_weight': to_int('macd_weight'),
             'macd_enabled': bool(score.get('macd_enabled', True)),
-            'score_threshold': to_float('score_threshold')
+            'score_threshold': to_float('score_threshold'),
+            'score_thresholds': score.get('score_thresholds', {})
         }
 
     def _convert_numeric_values(self, settings: dict) -> dict:

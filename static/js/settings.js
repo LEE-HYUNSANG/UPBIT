@@ -91,7 +91,8 @@ const recommendedSettings = {
         stochastic_enabled: true,
         macd_weight: 1,
         macd_enabled: true,
-        score_threshold: 6
+        score_threshold: 6,
+        score_thresholds: {}
     }
 };
 
@@ -301,6 +302,7 @@ function updateFormValues(settings) {
     setValue('buy_score.macd_weight', score.macd_weight);
     document.getElementById('buy_score.macd_enabled').value = String(score.macd_enabled);
     setValue('buy_score.score_threshold', score.score_threshold);
+    setValue('buy_score.score_thresholds', JSON.stringify(score.score_thresholds || {}));
 }
 
 // 매수 주문 설정 로드
@@ -389,7 +391,8 @@ function saveSettings(card = null) {
         stochastic_enabled: document.getElementById('buy_score.stochastic_enabled').value === 'true',
         macd_weight: getNumberValue('buy_score.macd_weight'),
         macd_enabled: document.getElementById('buy_score.macd_enabled').value === 'true',
-        score_threshold: getNumberValue('buy_score.score_threshold')
+        score_threshold: getNumberValue('buy_score.score_threshold'),
+        score_thresholds: JSON.parse(document.getElementById('buy_score.score_thresholds').value || '{}')
     };
 
     // 매수 주문 설정
