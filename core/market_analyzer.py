@@ -863,9 +863,12 @@ class MarketAnalyzer:
                     score, formula = self.calculate_buy_score(market_code, df_1m)
 
                     cmp = '>' if score >= threshold else '<'
-                    logger.info(
+                    msg = (
                         f"[{market_code}] buy_score = {score:.2f} ( {cmp} score_threshold = {threshold} | {formula} )"
                     )
+                    if score >= threshold:
+                        msg += " score_threshold를 넘었다"
+                    logger.info(msg)
 
                     coin_data = {
                         'market': market_code,
