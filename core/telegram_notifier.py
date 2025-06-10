@@ -478,6 +478,7 @@ class TelegramNotifier:
                 timeout=10,
             )
             response.raise_for_status()
+
             logger.info(f"텔레그램 메시지 전송 성공: {message[:50]}...")
             return True
         except requests.RequestException as e:

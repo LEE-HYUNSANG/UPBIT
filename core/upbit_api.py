@@ -195,15 +195,15 @@ class UpbitAPI:
             self.logger.error(f"총 자산 계산 실패: {str(e)}")
             return {'total_assets': 0, 'total_profit': 0, 'profit_rate': 0}
 
-    def place_order(self, market, side, volume, price=None, ord_type='limit'):
+    def place_order(self, market, side, volume=None, price=None, ord_type='limit'):
         """주문 실행
-        
+
         Args:
             market (str): 마켓 코드 (예: KRW-BTC)
             side (str): 주문 종류 (bid: 매수, ask: 매도)
-            volume (float): 주문량
-            price (float, optional): 주문 가격 (시장가 주문시 None)
-            ord_type (str, optional): 주문 타입 (limit: 지정가, market: 시장가)
+            volume (float, optional): 주문량. 시장가 매수(ord_type='price')의 경우 None
+            price (float, optional): 주문 가격. 시장가 매도(ord_type='market')의 경우 None
+            ord_type (str, optional): 주문 타입 (limit/price/market)
             
         Returns:
             dict: 주문 결과
@@ -213,12 +213,24 @@ class UpbitAPI:
             data = {
                 'market': market,
                 'side': side,
-                'volume': str(round(float(volume), 8)),
-                'ord_type': ord_type
+                'ord_type': ord_type,
             }
-            
-            if price is not None:
+
+            if ord_type == 'limit':
+                if volume is None or price is None:
+                    raise ValueError('limit 주문에는 volume과 price가 필요합니다')
+                data['volume'] = str(round(float(volume), 8))
                 data['price'] = str(price)
+            elif ord_type == 'price':
+                if price is None:
+                    raise ValueError('시장가 매수(price)에는 price가 필요합니다')
+                data['price'] = str(price)
+            elif ord_type == 'market':
+                if volume is None:
+                    raise ValueError('시장가 매도(market)에는 volume이 필요합니다')
+                data['volume'] = str(round(float(volume), 8))
+            else:
+                raise ValueError(f'지원하지 않는 주문 타입: {ord_type}')
                 
             headers = self._get_token(data)
             
