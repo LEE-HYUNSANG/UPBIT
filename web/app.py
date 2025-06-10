@@ -40,7 +40,9 @@ socketio = SocketIO(
     cors_allowed_origins="*",
     async_mode="eventlet",  # 웹소켓 지원을 위해 eventlet 사용
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
+    ping_timeout=60,   # 기본값보다 넉넉하게 설정하여 타임아웃 방지
+    ping_interval=60
 )
 
 # 로깅 설정
