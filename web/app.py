@@ -7,6 +7,8 @@ os.environ.setdefault("SOCKETIO_ASYNC_MODE", "threading")
 
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
+import flask.cli
+import click
 import json
 import sys
 from datetime import datetime
@@ -53,6 +55,29 @@ logging.basicConfig(
         logging.StreamHandler(sys.stdout)
     ]
 )
+
+# Suppress the Flask development server warning from logs
+class SuppressDevServerFilter(logging.Filter):
+    def filter(self, record):
+        return 'This is a development server' not in record.getMessage()
+
+for handler in logging.getLogger().handlers:
+    handler.addFilter(SuppressDevServerFilter())
+
+# Override Flask's server banner to skip the warning message
+def custom_show_server_banner(env, debug, app_import_path, eager_loading):
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        return
+    if app_import_path is not None:
+        message = f" * Serving Flask app {app_import_path!r}"
+        if not eager_loading:
+            message += " (lazy loading)"
+        click.echo(message)
+    click.echo(f" * Environment: {env}")
+    if debug is not None:
+        click.echo(f" * Debug mode: {'on' if debug else 'off'}")
+
+flask.cli.show_server_banner = custom_show_server_banner
 
 logger = logging.getLogger(__name__)
 
