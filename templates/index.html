@@ -154,7 +154,7 @@
                                 <span class="fw-bold">상태:</span>
                                 <span id="botStatus" class="badge bg-secondary ms-2">중지됨</span>
                             </div>
-                            <button id="toggleBot" class="btn btn-primary">시작</button>
+                            <button id="toggleBot" class="btn btn-secondary" disabled>시작</button>
                         </div>
                         <div class="market-status">
                             <div class="mb-2">
@@ -402,14 +402,14 @@
             if (status) {
                 statusBadge.className = 'badge bg-success ms-2';
                 statusBadge.textContent = message || '실행 중';
-                toggleButton.textContent = '중지';
-                toggleButton.className = 'btn btn-danger';
             } else {
                 statusBadge.className = 'badge bg-secondary ms-2';
                 statusBadge.textContent = message || '중지됨';
-                toggleButton.textContent = '시작';
-                toggleButton.className = 'btn btn-primary';
             }
+
+            // 버튼은 항상 비활성화된 회색 상태로 유지합니다.
+            toggleButton.className = 'btn btn-secondary';
+            toggleButton.disabled = true;
         }
 
         // 보유 코인 테이블 업데이트 함수
@@ -525,24 +525,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeSocket();
             
-            // 시작/중지 버튼 이벤트 리스너
-            const toggleButton = document.getElementById('toggleBot');
-            if (toggleButton) {
-                toggleButton.addEventListener('click', () => {
-                    if (!socket) {
-                        showNotification('서버에 연결할 수 없습니다.', 'error');
-                        return;
-                    }
-                    
-                    const event = isRunning ? 'stop_bot' : 'start_bot';
-                    console.log('Emitting event:', event);
-                    socket.emit(event, {}, (response) => {
-                        if (response && response.error) {
-                            showNotification(response.error, 'error');
-                        }
-                    });
-                });
-            }
+            // 시작/중지 버튼은 비활성화되어 있으므로 이벤트 리스너를 등록하지 않습니다.
 
             // 페이지 로드 시 초기 데이터 요청
             socket.emit('request_initial_data');

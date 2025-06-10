@@ -353,9 +353,5 @@ socket.on('bot_status', function(data) {
         monitoringStatus.textContent = `${data.monitored_count} / ${data.total_markets}`;
     }
 
-    // 버튼 상태 업데이트
-    const startButton = document.getElementById('start-bot');
-    const stopButton = document.getElementById('stop-bot');
-    if (startButton) startButton.disabled = data.status;
-    if (stopButton) stopButton.disabled = !data.status;
+    // 버튼 상태 업데이트는 사용하지 않습니다. 항상 비활성화 상태로 유지합니다.
 }); 

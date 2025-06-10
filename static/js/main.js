@@ -4,6 +4,9 @@ const socket = io();
 // DOM 요소
 const botStatus = document.getElementById('bot-status');
 const startBotButton = document.getElementById('toggleBot');
+if (startBotButton) {
+    startBotButton.disabled = true;
+}
 const monitoredCoinsTable = document.getElementById('monitored-coins');
 const holdingsTable = document.getElementById('holdingsTableBody');
 const statusIndicator = document.getElementById('botStatus');
@@ -243,12 +246,7 @@ function sellCoin(market) {
     }
 }
 
-// 시작/중지 버튼 이벤트 리스너
-startBotButton.addEventListener('click', function() {
-    const isRunning = this.textContent.trim() === '중지';
-    console.log('버튼 클릭:', isRunning ? 'stop_bot' : 'start_bot');
-    socket.emit(isRunning ? 'stop_bot' : 'start_bot');
-});
+// 시작/중지 버튼은 비활성화되어 있습니다.
 
 // 페이지 로드 시 초기 데이터 요청
 socket.emit('request_initial_data');
