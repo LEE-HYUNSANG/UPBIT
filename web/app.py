@@ -93,7 +93,7 @@ def load_config():
                 logger.info("설정 파일 로드 성공")
                 
                 # 필수 섹션 확인 및 보완
-                required_sections = ['trading', 'signals', 'notifications', 'market_analysis']
+                required_sections = ['trading', 'signals', 'notifications', 'market_analysis', 'buy_score']
                 default_config = get_default_config()
                 
                 for section in required_sections:
@@ -150,140 +150,8 @@ def save_config(config):
 
 def get_default_config():
     """기본 설정값 반환"""
-    config = {
-        "version": "1.0.0",
-        "trading": {
-            "enabled": True,
-            "investment_amount": 10000,
-            "max_coins": 8,
-            "coin_selection": DEFAULT_COIN_SELECTION.copy()
-        },
-        "signals": {
-            "enabled": True,
-            "common_conditions": {
-                "enabled": True,
-                "rsi": {
-                    "enabled": True,
-                    "period": 14
-                },
-                "bollinger": {
-                    "enabled": True,
-                    "period": 20,
-                    "k": 2.0
-                },
-                "volume_ma": {
-                    "enabled": True,
-                    "period": 5
-                }
-            },
-            "buy_conditions": {
-                "enabled": True,
-                "tf_filter": {
-                    "enabled": True
-                },
-                "golden_cross": {
-                    "enabled": True,
-                    "short_period": 5,
-                    "long_period": 20
-                },
-                "rsi": {
-                    "enabled": True,
-                    "threshold": 35
-                },
-                "bollinger": {
-                    "enabled": True,
-                    "threshold": -2.0
-                },
-                "volume_surge": {
-                    "enabled": True,
-                    "threshold": 2.0
-                }
-            },
-            "sell_conditions": {
-                "enabled": True,
-                "stop_loss": {
-                    "enabled": True,
-                    "threshold": -2.5,
-                    "trailing_stop": 0.5
-                },
-                "take_profit": {
-                    "enabled": True,
-                    "threshold": 2.0,
-                    "trailing_profit": 1.0
-                },
-                "dead_cross": {
-                    "enabled": True,
-                    "short_period": 5,
-                    "long_period": 20
-                },
-                "rsi": {
-                    "enabled": True,
-                    "threshold": 60
-                },
-                "bollinger": {
-                    "enabled": True,
-                    "threshold": 2.0
-                }
-            }
-        },
-        "notifications": {
-            "trade": {
-                "start": True,     # 거래 시작 알림
-                "complete": True,  # 거래 완료 알림
-                "profit_loss": True  # 수익/손실 알림
-            },
-            "system": {
-                "error": True,        # 에러 알림
-                "daily_summary": True,  # 일일 요약 알림
-                "signal": True         # 신호 알림
-            }
-        },
-        "market_analysis": {
-            "thresholds": {
-                "bull": {
-                    "trend_strength": 0.5,
-                    "volatility": 0.012,
-                    "volume_increase": 1.3,
-                    "market_dominance": 0.65,
-                    "confidence_threshold": 0.7
-                },
-                "bear": {
-                    "trend_strength": -0.5,
-                    "volatility": 0.015,
-                    "volume_increase": 1.5,
-                    "market_dominance": 0.7,
-                    "confidence_threshold": 0.7
-                }
-            },
-            "parameters": {
-                "bull": {
-                    "rsi_threshold": 70,
-                    "volume_multiplier": 1.5,
-                    "profit_target": 2.0,
-                    "stop_loss": 1.0
-                },
-                "bear": {
-                    "rsi_threshold": 30,
-                    "volume_multiplier": 2.0,
-                    "profit_target": 1.5,
-                    "stop_loss": 1.5
-                },
-                "neutral": {
-                    "rsi_threshold": 50,
-                    "volume_multiplier": 1.8,
-                    "profit_target": 1.8,
-                    "stop_loss": 1.2
-                }
-            },
-            "weights": {
-                "trend": 0.4,
-                "volatility": 0.2,
-                "volume": 0.2,
-                "market_dominance": 0.2
-            },
-            "check_interval_minutes": 15
-        }
-    }
+    # 기본 설정 모듈에서 값을 복사하여 반환한다.
+    return DEFAULT_SETTINGS.copy()
 
 def validate_config(config):
     """설정 유효성 검사"""
@@ -292,7 +160,7 @@ def validate_config(config):
         logger.info("설정 유효성 검사 시작...")
         
         # 필수 섹션 확인
-        required_sections = ['version', 'trading', 'signals', 'notifications', 'market_analysis']
+        required_sections = ['version', 'trading', 'signals', 'notifications', 'market_analysis', 'buy_score']
         for section in required_sections:
             if section not in config:
                 error_msg = f"[오류] 필수 섹션 누락: {section}"
