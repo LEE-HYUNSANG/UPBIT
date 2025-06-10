@@ -326,7 +326,7 @@ class UpbitAPI:
         """호가 정보 조회"""
         try:
             import pyupbit
-            orderbook = pyupbit.get_orderbook(tickers=market)
+            orderbook = pyupbit.get_orderbook(ticker=market)
             return orderbook[0] if orderbook else None
         except Exception as e:
             self.logger.error(f"호가 조회 실패: {str(e)}")
