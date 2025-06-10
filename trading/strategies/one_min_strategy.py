@@ -6,7 +6,7 @@ from ..indicators.technical import (
     calculate_rsi, calculate_slope, calculate_volume_conditions
 )
 from core.upbit_api import UpbitAPI
-from ..utils.logger import TradingLogger
+from core.logger import TradingLogger
 
 class OneMinStrategy:
     def __init__(self, settings: Dict, exchange: UpbitAPI):
