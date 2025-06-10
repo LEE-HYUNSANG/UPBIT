@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from core.upbit_libraries import *
+from core.upbit_api import UpbitAPI
+from trading.indicators.technical import calculate_ema, calculate_rsi
 from core.performance import PerformanceMetrics
 from core.risk_manager import RiskManager
 from core.logger import TradingLogger
@@ -35,6 +36,8 @@ class TradingState:
         self.performance = PerformanceMetrics()
         self.risk_manager = RiskManager(config_path)
         self.logger = TradingLogger()
+        # Upbit API 인스턴스
+        self.api = UpbitAPI()
         
         # 시장 분석기 초기화
         self.market_analyzer = MarketAnalyzer(config_path)
@@ -51,7 +54,7 @@ class TradingState:
     def update_tradeable_markets(self) -> List[str]:
         """거래 가능한 마켓 목록 업데이트"""
         url = f"{SERVER_URL}/v1/market/all"
-        markets = send_request('GET', url)
+        markets = self.api.send_request('GET', url)
         if not markets:
             return []
             
@@ -62,7 +65,7 @@ class TradingState:
         if self.config['trading']['filters']['volume']['enabled']:
             volume_data = {}
             for market in krw_markets:
-                ticker = send_request('GET', f"{SERVER_URL}/v1/ticker", {'markets': market})
+                ticker = self.api.send_request('GET', f"{SERVER_URL}/v1/ticker", {'markets': market})
                 if ticker:
                     volume_data[market] = float(ticker[0]['acc_trade_price_24h'])
                     
@@ -74,7 +77,7 @@ class TradingState:
         if self.config['trading']['filters']['price']['enabled']:
             filtered_markets = []
             for market in krw_markets:
-                ticker = send_request('GET', f"{SERVER_URL}/v1/ticker", {'markets': market})
+                ticker = self.api.send_request('GET', f"{SERVER_URL}/v1/ticker", {'markets': market})
                 if ticker:
                     price = float(ticker[0]['trade_price'])
                     if (self.config['trading']['filters']['price']['min'] <= price <= 
@@ -146,15 +149,15 @@ def check_buy_conditions(c1m: dict, c5m: dict = None, config: dict = None) -> Tu
     conditions['TRADE_STRENGTH'] = trade_strength > 1.2  # 매수세력이 20% 이상 강함
     
     # 5. RSI 과매도 반등 체크
-    rsi = calc_rsi(price_data, config['indicators']['rsi']['period'])
-    rsi_prev = calc_rsi(price_data[:-1], config['indicators']['rsi']['period'])
+    rsi = calculate_rsi(pd.Series(price_data), config['indicators']['rsi']['period']).iloc[-1]
+    rsi_prev = calculate_rsi(pd.Series(price_data[:-1]), config['indicators']['rsi']['period']).iloc[-1]
     conditions['RSI_REVERSAL'] = (rsi_prev < config['indicators']['rsi']['oversold'] and 
                                  rsi > rsi_prev + 3)  # 과매도에서 반등
     
     # 6. 이동평균선 정배열 체크
-    ema_short = calc_ema(price_data, config['indicators']['ema']['short_1m'])
-    ema_mid = calc_ema(price_data, 15)  # 15분 EMA 추가
-    ema_long = calc_ema(price_data, config['indicators']['ema']['long_1m'])
+    ema_short = calculate_ema(pd.Series(price_data), config['indicators']['ema']['short_1m']).iloc[-1]
+    ema_mid = calculate_ema(pd.Series(price_data), 15).iloc[-1]  # 15분 EMA 추가
+    ema_long = calculate_ema(pd.Series(price_data), config['indicators']['ema']['long_1m']).iloc[-1]
     conditions['EMA_ALIGN'] = (ema_short[-1] > ema_mid[-1] > ema_long[-1])
     
     # 7. 볼린저 밴드 하단 반등 체크
@@ -201,7 +204,8 @@ def check_sell_conditions(position: Position, current_price: float,
         
     # 2. 추세 전환 체크
     price_data = [float(candle['trade_price']) for candle in c1m]
-    ema_short = calc_ema(price_data, 5)  # 5분 EMA
+    ema_short_series = calculate_ema(pd.Series(price_data), 5)
+    ema_short = ema_short_series.values
     
     # 상승 추세 꺾임 체크
     if ema_short[-1] < ema_short[-2] < ema_short[-3]:
@@ -276,7 +280,7 @@ def process_market(market: str, state: TradingState):
         return
         
     # 현재가 조회
-    ticker = send_request('GET', f"{SERVER_URL}/v1/ticker", {'markets': market})
+    ticker = state.api.send_request('GET', f"{SERVER_URL}/v1/ticker", {'markets': market})
     if not ticker:
         return
         
@@ -288,7 +292,7 @@ def process_market(market: str, state: TradingState):
         should_sell, reason = check_sell_conditions(position, current_price, state.config['indicators']['rsi']['period'], state.risk_manager)
         
         if should_sell:
-            result = sell_market(market, position.volume)
+            result = state.api.sell_market_order(market, position.volume)
             if result:
                 profit_percent = ((current_price / position.entry_price) - 1) * 100
                 profit = (current_price - position.entry_price) * position.volume
@@ -314,23 +318,23 @@ def process_market(market: str, state: TradingState):
         return
         
     # 1분봉 데이터 조회
-    candles_1m = send_request('GET', f"{SERVER_URL}/v1/candles/minutes/1", 
-                            {'market': market, 'count': 100})
+    candles_1m = state.api.send_request(
+        'GET', f"{SERVER_URL}/v1/candles/minutes/1", {'market': market, 'count': 100})
     if not candles_1m:
         return
         
     # 5분봉 데이터 조회 (설정에 따라)
     candles_5m = None
     if state.config['timeframe']['use_5m_ema']:
-        candles_5m = send_request('GET', f"{SERVER_URL}/v1/candles/minutes/5",
-                                {'market': market, 'count': 100})
+        candles_5m = state.api.send_request(
+            'GET', f"{SERVER_URL}/v1/candles/minutes/5", {'market': market, 'count': 100})
         
     should_buy, reason, conditions = check_buy_conditions(candles_1m, candles_5m, state.config)
     state.logger.log_signal(market, "매수", conditions)
     
     if should_buy:
         amount = state.config['trading']['base']['buy_amount']
-        result = buy_market(market, amount)
+        result = state.api.buy_market_order(market, amount)
         if result:
             volume = float(result['volume'])
             price = float(result['price'])
