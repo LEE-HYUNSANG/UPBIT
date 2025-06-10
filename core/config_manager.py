@@ -338,6 +338,15 @@ class ConfigManager:
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
+            # 손절/익절 값 검증 (입력값 기준)
+            if (
+                'stop_loss' in new_config and 'take_profit' in new_config and
+                new_config.get('stop_loss_enabled', True) and
+                new_config.get('take_profit_enabled', True)
+            ):
+                if new_config['stop_loss'] > new_config['take_profit']:
+                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
+
             # 기존 설정과 병합하여 완전한 구성 생성
             def deep_merge(src, updates):
                 for k, v in updates.items():
@@ -416,25 +425,9 @@ class ConfigManager:
             if 'max_coins' in trading and trading['max_coins'] <= 0:
                 raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
 
+        # RSI 설정 검증
         if 'signals' in config:
             signals = config['signals']
-            common = signals.get('common_conditions', {})
-            rsi = common.get('rsi', {})
-            if rsi.get('enabled', False):
-                period = rsi.get('period', 0)
-                if not isinstance(period, (int, float)) or not (0 < period <= 100):
-                    raise ValueError("RSI 기간은 1에서 100 사이여야 합니다.")
-
-            sell = signals.get('sell_conditions', {})
-            stop_loss = sell.get('stop_loss', {})
-            take_profit = sell.get('take_profit', {})
-            if (
-                stop_loss.get('enabled', False)
-                and take_profit.get('enabled', False)
-                and 'threshold' in stop_loss
-                and 'threshold' in take_profit
-            ):
-                sl_val = abs(float(stop_loss['threshold']))
-                tp_val = float(take_profit['threshold'])
-                if sl_val >= tp_val:
-                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
+            rsi_common = signals.get('common_conditions', {}).get('rsi', {})
+            if 'period' in rsi_common and rsi_common['period'] <= 0:
+                raise ValueError("RSI 기간은 0보다 커야 합니다.")
