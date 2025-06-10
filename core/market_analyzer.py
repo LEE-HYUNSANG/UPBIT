@@ -44,6 +44,13 @@ import ta
 load_dotenv()
 logger = logging.getLogger(__name__)
 
+def safe_float(value: Any, default: float = 0.0) -> float:
+    """Safely convert a value to float, returning a default for None or invalid values."""
+    try:
+        return float(value) if value is not None else default
+    except (ValueError, TypeError):
+        return default
+
 def rate_limit(seconds: int = 1):
     """API 호출 레이트 리미팅을 위한 데코레이터"""
     def decorator(func):
@@ -415,7 +422,7 @@ class MarketAnalyzer:
             
             for ticker in tickers:
                 try:
-                    change_rate = float(ticker['signed_change_rate'])
+                    change_rate = safe_float(ticker.get('signed_change_rate'))
                     total_change += change_rate
                     valid_markets += 1
                 except (KeyError, ValueError, TypeError) as e:
@@ -734,8 +741,8 @@ class MarketAnalyzer:
                     if not market:
                         continue
 
-                    current_price = float(ticker['trade_price'])
-                    trade_volume = float(ticker['acc_trade_price_24h'])
+                    current_price = safe_float(ticker.get('trade_price'))
+                    trade_volume = safe_float(ticker.get('acc_trade_price_24h'))
                     if not (min_price <= current_price <= max_price):
                         continue
                     if trade_volume < min_volume_24h:
@@ -744,19 +751,18 @@ class MarketAnalyzer:
                     candles_1h = self.get_candles(market['market'], interval='minute1', count=60)
                     if not candles_1h:
                         continue
-                    avg_volume = sum(float(c['candle_acc_trade_price']) for c in candles_1h) / len(candles_1h)
+                    avg_volume = sum(safe_float(c.get('candle_acc_trade_price')) for c in candles_1h) / len(candles_1h)
                     if avg_volume < min_volume_1h:
                         continue
-                    high_price = max(float(c['high_price']) for c in candles_1h)
-                    low_price = min(float(c['low_price']) for c in candles_1h)
+                    high_price = max(safe_float(c.get('high_price')) for c in candles_1h)
+                    low_price = min(safe_float(c.get('low_price')) for c in candles_1h)
                     if high_price < low_price * 1.002:
                         continue
                     tick_ratio = self._get_tick_size(current_price) / current_price * 100
                     if tick_ratio < min_tick_ratio:
                         continue
 
-                    change_rate_raw = ticker.get('signed_change_rate')
-                    change_rate = 0.0 if change_rate_raw is None else float(change_rate_raw) * 100
+                    change_rate = safe_float(ticker.get('signed_change_rate')) * 100
 
                     market_info.append({
                         'market': market['market'],

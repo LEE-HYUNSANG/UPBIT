@@ -3,20 +3,15 @@
 이 설정들은 새로운 설정이 저장되기 전까지 기본값으로 사용됩니다.
 """
 
+from core.constants import DEFAULT_COIN_SELECTION
+
 DEFAULT_SETTINGS = {
     "version": "1.0.0",
     "trading": {
         "enabled": True,
         "investment_amount": 10000,
         "max_coins": 5,
-        "coin_selection": {
-            "min_price": 700,
-            "max_price": 26666,
-            "min_volume_24h": 1400000000,
-            "min_volume_1h": 100000000,
-            "min_tick_ratio": 0.04,
-            "excluded_coins": ["KRW-ETHW", "KRW-ETHF", "KRW-XCORE", "KRW-GAS"]
-        }
+        "coin_selection": DEFAULT_COIN_SELECTION.copy()
     },
     "market_analysis": {
         "thresholds": {

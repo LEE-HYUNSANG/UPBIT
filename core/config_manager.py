@@ -215,6 +215,26 @@ class ConfigManager:
                     "signal": True
                 }
             },
+            "buy_score": {
+                "strength_weight": 2,
+                "strength_threshold": 130,
+                "volume_spike_weight": 2,
+                "volume_spike_threshold": 200,
+                "orderbook_weight": 1,
+                "orderbook_threshold": 130,
+                "momentum_weight": 1,
+                "momentum_threshold": 0.3,
+                "near_high_weight": 1,
+                "near_high_threshold": -1,
+                "trend_reversal_weight": 1,
+                "williams_weight": 1,
+                "williams_enabled": True,
+                "stochastic_weight": 1,
+                "stochastic_enabled": True,
+                "macd_weight": 1,
+                "macd_enabled": True,
+                "score_threshold": 6
+            },
             "auto_settings": {
                 "enabled": False
             }
@@ -259,7 +279,7 @@ class ConfigManager:
             nested["trading"] = config["trading"]
 
         # 나머지 중첩 구조는 그대로 유지
-        for key in ["signals", "notifications", "auto_settings", "version"]:
+        for key in ["signals", "notifications", "auto_settings", "version", "buy_score"]:
             if key in config:
                 nested[key] = config[key]
 

@@ -215,13 +215,26 @@ function markSettingsAsChanged() {
 }
 
 // 설정 로드
+function mergeDeep(target, source) {
+    for (const key in source) {
+        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+            if (!target[key]) target[key] = {};
+            mergeDeep(target[key], source[key]);
+        } else {
+            target[key] = source[key];
+        }
+    }
+    return target;
+}
+
 function loadSettings() {
     fetch('/api/settings')
         .then(response => response.json())
-        .then(settings => {
-            currentSettings = settings;
-            updateFormValues(settings);
-            updateExcludedCoinsList(settings.trading?.coin_selection?.excluded_coins || []);
+        .then(data => {
+            const settings = data.data || data;
+            currentSettings = mergeDeep(JSON.parse(JSON.stringify(recommendedSettings)), settings);
+            updateFormValues(currentSettings);
+            updateExcludedCoinsList(currentSettings.trading?.coin_selection?.excluded_coins || []);
         })
         .catch(error => {
             console.error('설정을 불러오는 중 오류가 발생했습니다:', error);

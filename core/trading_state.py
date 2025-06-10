@@ -40,13 +40,13 @@ class TradingState:
     시스템의 전반적인 상태를 추적하고 관리합니다.
     """
     
-    def __init__(self, config_path: str = 'config/config.json'):
+    def __init__(self, config_path: str = 'config.json'):
         """
         거래 상태 관리자 초기화
         
         Args:
             config_path (str): 설정 파일 경로
-                기본값: 'config/config.json'
+                기본값: 'config.json'
         """
         # 설정 파일 로드
         with open(config_path, 'r') as f:

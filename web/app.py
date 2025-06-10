@@ -13,6 +13,7 @@ import threading
 import time
 from core.trading_logic import TradingLogic
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
+from core.constants import DEFAULT_COIN_SELECTION
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -149,20 +150,13 @@ def save_config(config):
 
 def get_default_config():
     """기본 설정값 반환"""
-    return {
+    config = {
         "version": "1.0.0",
         "trading": {
             "enabled": True,
             "investment_amount": 10000,
             "max_coins": 8,
-            "coin_selection": {
-                "min_price": 700,
-                "max_price": 26666,
-                "min_volume_24h": 1400000000,
-                "min_volume_1h": 100000000,
-                "min_tick_ratio": 0.04,
-                "excluded_coins": ["KRW-ETHW", "KRW-ETHF", "KRW-XCORE", "KRW-GAS", "KRW-BTC"]
-            }
+            "coin_selection": DEFAULT_COIN_SELECTION.copy()
         },
         "signals": {
             "enabled": True,

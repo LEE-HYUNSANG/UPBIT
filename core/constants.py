@@ -1,0 +1,9 @@
+# Constants for global configuration
+DEFAULT_COIN_SELECTION = {
+    "min_price": 700,
+    "max_price": 26666,
+    "min_volume_24h": 1400000000,
+    "min_volume_1h": 100000000,
+    "min_tick_ratio": 0.04,
+    "excluded_coins": ["KRW-ETHW", "KRW-ETHF", "KRW-XCORE", "KRW-GAS", "KRW-BTS"],
+}
