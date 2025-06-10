@@ -1192,6 +1192,10 @@ class MarketAnalyzer:
                 target_price = avg_price + tick * min_ticks
                 target_price = math.ceil(target_price / tick) * tick
 
+            logger.info(
+                f"{market} 선매도 계산: avg_price={avg_price}, tick={tick}, target={target_price}"
+            )
+
             sell_success, sell_order = self.order_manager.place_limit_sell(
                 market, executed_volume, target_price
             )
