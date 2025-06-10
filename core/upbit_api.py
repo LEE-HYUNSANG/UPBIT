@@ -355,7 +355,11 @@ class UpbitAPI:
                 import pyupbit
                 orderbook = pyupbit.get_orderbook(ticker=market)
                 if orderbook:
-                    return orderbook[0]
+                    # pyupbit returns dict when a single ticker is given,
+                    # and a list when multiple tickers are provided.
+                    if isinstance(orderbook, list):
+                        return orderbook[0]
+                    return orderbook
                 last_error = ValueError("orderbook empty")
                 self.logger.error(
                     f"호가 조회 실패: 결과 없음 (attempt {attempt}/{retries})"
