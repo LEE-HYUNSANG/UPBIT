@@ -338,6 +338,15 @@ class ConfigManager:
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
+            # 손절/익절 값 검증 (입력값 기준)
+            if (
+                'stop_loss' in new_config and 'take_profit' in new_config and
+                new_config.get('stop_loss_enabled', True) and
+                new_config.get('take_profit_enabled', True)
+            ):
+                if new_config['stop_loss'] > new_config['take_profit']:
+                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
+
             # 기존 설정과 병합하여 완전한 구성 생성
             def deep_merge(src, updates):
                 for k, v in updates.items():
