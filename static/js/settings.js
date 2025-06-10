@@ -24,8 +24,7 @@ const recommendedSettings = {
             min_volume_1h: 100000000,
             min_tick_ratio: 0.04,
             excluded_coins: [],
-            buy_price_type: 'best_bid',    // 매수가 설정 (best_bid/best_bid+1/best_ask)
-            sell_price_type: 'best_ask'    // 매도가 설정 (best_ask/best_ask-1/best_bid)
+            buy_price_type: 'best_bid'    // 매수가 설정 (best_bid/best_bid+1/best_ask)
         }
     },
     signals: {
@@ -60,28 +59,6 @@ const recommendedSettings = {
                 volume_surge: true     // 거래량 급증
             }
         },
-        sell_conditions: {
-            stop_loss: {
-                enabled: true,
-                threshold: -2.5,       // 고정 손절 -2.5%
-                trailing_stop: 0.5     // 추적 손절 0.5%
-            },
-            take_profit: {
-                enabled: true,
-                threshold: 2.0,        // 목표 수익 2.0%
-                trailing_profit: 1.0    // 추적 익절 1.0%
-            },
-            dead_cross: {
-                enabled: true          // SMA 5/20 데드크로스 & 기울기 ≤ -0.1
-            },
-            rsi: {
-                enabled: true,
-                threshold: 60          // RSI ≥ 60 2캔들 연속
-            },
-            bollinger: {
-                enabled: true          // BB(20, 2.0) 상단선 돌파
-            }
-        }
     },
     notifications: {
         trade: {
@@ -129,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 초기 설정 로드
     loadSettings();
     loadBuySettings();
+    loadSellSettings();
 
     // 제외 코인 입력 이벤트
     excludedCoinInput.addEventListener('keypress', (e) => {
@@ -145,8 +123,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 매수가/매도가 설정 변경 이벤트
-    document.querySelectorAll('input[name="buy_price_type"], input[name="sell_price_type"]').forEach(radio => {
+    // 매수가 설정 변경 이벤트
+    document.querySelectorAll('input[name="buy_price_type"]').forEach(radio => {
         radio.addEventListener('change', () => {
             markSettingsAsChanged();
         });
@@ -257,10 +235,6 @@ function updateFormValues(settings) {
     const buyPriceType = settings.trading?.buy_price_type || 'best_bid';
     document.querySelector(`input[name="buy_price_type"][value="${buyPriceType}"]`).checked = true;
 
-    // 매도가 설정
-    const sellPriceType = settings.trading?.sell_price_type || 'best_ask';
-    document.querySelector(`input[name="sell_price_type"][value="${sellPriceType}"]`).checked = true;
-
     // 매수 지표 설정
     const buyConditions = settings.signals?.buy_conditions || {};
     
@@ -292,24 +266,9 @@ function updateFormValues(settings) {
     setValue('signals.buy_conditions.enabled.bollinger', buyConditions.enabled?.bollinger);
     setValue('signals.buy_conditions.enabled.volume_surge', buyConditions.enabled?.volume_surge);
 
-    // 매도 조건 설정
-    const sellConditions = settings.signals?.sell_conditions || {};
-    
-    // 손절매 설정
-    setValue('signals.sell_conditions.stop_loss.enabled', sellConditions.stop_loss?.enabled);
-    setValue('signals.sell_conditions.stop_loss.threshold', sellConditions.stop_loss?.threshold);
-    setValue('signals.sell_conditions.stop_loss.trailing_stop', sellConditions.stop_loss?.trailing_stop);
-    
-    // 익절 설정
-    setValue('signals.sell_conditions.take_profit.enabled', sellConditions.take_profit?.enabled);
-    setValue('signals.sell_conditions.take_profit.threshold', sellConditions.take_profit?.threshold);
-    setValue('signals.sell_conditions.take_profit.trailing_profit', sellConditions.take_profit?.trailing_profit);
-    
-    // 기타 매도 조건
-    setValue('signals.sell_conditions.dead_cross.enabled', sellConditions.dead_cross?.enabled);
-    setValue('signals.sell_conditions.rsi.enabled', sellConditions.rsi?.enabled);
-    setValue('signals.sell_conditions.rsi.threshold', sellConditions.rsi?.threshold);
-    setValue('signals.sell_conditions.bollinger.enabled', sellConditions.bollinger?.enabled);
+    // 매도 설정
+    setValue('sell_settings.TP_PCT', settings.sell_settings?.TP_PCT);
+    setValue('sell_settings.MINIMUM_TICKS', settings.sell_settings?.MINIMUM_TICKS);
 
     // 알림 설정
     const notifications = settings.notifications || {};
@@ -367,6 +326,26 @@ function updateBuySettingsForm(settings) {
     if (second) second.value = settings['2nd_Bid_Price'] || 'ASK1';
 }
 
+// 매도 주문 설정 로드
+function loadSellSettings() {
+    fetch('/api/sell_settings')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateSellSettingsForm(data.data);
+            }
+        })
+        .catch(() => {
+            showNotification('매도 설정을 불러오는 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+function updateSellSettingsForm(settings) {
+    if (!settings) return;
+    setValue('sell_settings.TP_PCT', settings.TP_PCT);
+    setValue('sell_settings.MINIMUM_TICKS', settings.MINIMUM_TICKS);
+}
+
 // 설정 저장
 function saveSettings() {
     const settings = {
@@ -380,8 +359,7 @@ function saveSettings() {
                 min_volume_1h: getNumberValue('trading.min_volume_1h'),
                 min_tick_ratio: getNumberValue('trading.min_tick_ratio'),
                 excluded_coins: excludedCoins,
-                buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value,
-                sell_price_type: document.querySelector('input[name="sell_price_type"]:checked').value
+                buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value
             }
         },
         signals: {
@@ -414,29 +392,11 @@ function saveSettings() {
                     bollinger: getBooleanValue('signals.buy_conditions.enabled.bollinger'),
                     volume_surge: getBooleanValue('signals.buy_conditions.enabled.volume_surge')
                 }
-            },
-            sell_conditions: {
-                stop_loss: {
-                    enabled: getBooleanValue('signals.sell_conditions.stop_loss.enabled'),
-                    threshold: getNumberValue('signals.sell_conditions.stop_loss.threshold'),
-                    trailing_stop: getNumberValue('signals.sell_conditions.stop_loss.trailing_stop')
-                },
-                take_profit: {
-                    enabled: getBooleanValue('signals.sell_conditions.take_profit.enabled'),
-                    threshold: getNumberValue('signals.sell_conditions.take_profit.threshold'),
-                    trailing_profit: getNumberValue('signals.sell_conditions.take_profit.trailing_profit')
-                },
-                dead_cross: {
-                    enabled: getBooleanValue('signals.sell_conditions.dead_cross.enabled')
-                },
-                rsi: {
-                    enabled: getBooleanValue('signals.sell_conditions.rsi.enabled'),
-                    threshold: getNumberValue('signals.sell_conditions.rsi.threshold')
-                },
-                bollinger: {
-                    enabled: getBooleanValue('signals.sell_conditions.bollinger.enabled')
-                }
             }
+        },
+        sell_settings: {
+            TP_PCT: getNumberValue('sell_settings.TP_PCT'),
+            MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
         },
         notifications: {
             trade: {
@@ -503,6 +463,24 @@ function saveSettings() {
     .then(res => res ? res.json() : {success: true})
     .then(result => {
         if (result.success) {
+            const sellSettings = {
+                TP_PCT: getNumberValue('sell_settings.TP_PCT'),
+                MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
+            };
+            return fetch('/api/sell_settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(sellSettings)
+            });
+        } else {
+            throw new Error(result.error || '매수 설정 저장 중 오류가 발생했습니다.');
+        }
+    })
+    .then(res => res ? res.json() : {success: true})
+    .then(result => {
+        if (result.success) {
             showNotification('설정이 저장되었습니다.', 'success');
             currentSettings = settings;
             const saveButton = document.querySelector('button.btn-warning');
@@ -511,7 +489,7 @@ function saveSettings() {
                 saveButton.classList.add('btn-primary');
             }
         } else {
-            showNotification(result.error || '매수 설정 저장 중 오류가 발생했습니다.', 'error');
+            showNotification(result.error || '매도 설정 저장 중 오류가 발생했습니다.', 'error');
         }
     })
     .catch(error => {

@@ -79,6 +79,7 @@ class MarketAnalyzer:
         """초기화"""
         self.config_path = config_path
         self.buy_settings_path = str(Path(__file__).parent.parent / 'config' / 'buy_settings.json')
+        self.sell_settings_path = str(Path(__file__).parent.parent / 'config' / 'sell_settings.json')
         self.server_url = 'https://api.upbit.com'
         self.request_timeout = 10
         self.cache_duration = 900
@@ -1638,6 +1639,16 @@ class MarketAnalyzer:
             logger.error(f"매수 설정 로드 실패: {e}")
         return {}
 
+    def get_sell_settings(self) -> Dict:
+        """매도 주문 설정 조회"""
+        try:
+            if os.path.exists(self.sell_settings_path):
+                with open(self.sell_settings_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"매도 설정 로드 실패: {e}")
+        return {}
+
     def save_buy_settings(self, settings: Dict) -> bool:
         """매수 주문 설정 저장"""
         try:
@@ -1648,6 +1659,23 @@ class MarketAnalyzer:
             return True
         except Exception as e:
             logger.error(f"매수 설정 저장 실패: {e}")
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
+            return False
+
+    def save_sell_settings(self, settings: Dict) -> bool:
+        """매도 주문 설정 저장"""
+        try:
+            tmp = self.sell_settings_path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=4, ensure_ascii=False)
+            os.replace(tmp, self.sell_settings_path)
+            return True
+        except Exception as e:
+            logger.error(f"매도 설정 저장 실패: {e}")
             if os.path.exists(tmp):
                 try:
                     os.remove(tmp)

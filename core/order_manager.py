@@ -258,6 +258,27 @@ class OrderManager:
             logger.error(f"{market}: 지정가 매수 처리 중 오류 발생 - {str(e)}")
             return False, None
 
+    def place_limit_sell(self, market: str, volume: float, price: float) -> Tuple[bool, Optional[Dict]]:
+        """지정가 매도 주문"""
+        try:
+            order = self.api.place_order(
+                market=market,
+                side='ask',
+                volume=volume,
+                price=price,
+                ord_type='limit'
+            )
+            if not order:
+                logger.error(f"{market}: 매도 주문 실패")
+                return False, None
+            success, final_order = self._wait_for_order(order['uuid'], self.order_timeout)
+            if not success:
+                self.api.cancel_order(order['uuid'])
+            return success, final_order
+        except Exception as e:
+            logger.error(f"{market}: 매도 주문 처리 중 오류 발생 - {str(e)}")
+            return False, None
+
     def buy_with_settings(self, market: str, settings: Dict) -> Tuple[bool, Optional[Dict]]:
         """설정 기반 매수 진행"""
         mapping = {

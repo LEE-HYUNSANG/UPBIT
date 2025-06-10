@@ -462,127 +462,13 @@
                         <h5 class="card-title mb-0">매도 조건 설정</h5>
                     </div>
                     <div class="card-body">
-                        <!-- 매도가 설정 -->
-                        <div class="mb-4">
-                            <h6 class="mb-3">매도가 설정</h6>
-                            <div class="btn-group w-100" role="group">
-                                <input type="radio" class="btn-check" name="sell_price_type" id="sell_price_best_ask" value="best_ask" checked>
-                                <label class="btn btn-outline-primary" for="sell_price_best_ask">최저매도호가</label>
-
-                                <input type="radio" class="btn-check" name="sell_price_type" id="sell_price_best_ask_minus" value="best_ask-1">
-                                <label class="btn btn-outline-primary" for="sell_price_best_ask_minus">최고매도-1호가</label>
-
-                                <input type="radio" class="btn-check" name="sell_price_type" id="sell_price_best_bid" value="best_bid">
-                                <label class="btn btn-outline-primary" for="sell_price_best_bid">최고매수호가</label>
-                            </div>
-                        </div>
-
-                        <!-- 손절매 설정 -->
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center mb-2">
-                                <label class="toggle-switch mb-0">
-                                    <input type="checkbox" id="signals.sell_conditions.stop_loss.enabled">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2 mb-0">손절매(Stop Loss) 로직</label>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="input-group">
-                                        <span class="input-group-text">고정 손절</span>
-                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.stop_loss.threshold" value="-2.5">
-                                        <span class="input-group-text">%</span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="input-group">
-                                        <span class="input-group-text">추적 손절</span>
-                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.stop_loss.trailing_stop" value="0.5">
-                                        <span class="input-group-text">%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                • 고정 손절: 진입가 대비 설정값 도달 시 즉시 청산<br>
-                                • 추적 손절: 최고가 대비 설정값 이상 하락 시 청산
-                            </small>
-                        </div>
-
-                        <!-- 익절 설정 -->
-                        <div class="mb-4">
-                            <div class="d-flex align-items-center mb-2">
-                                <label class="toggle-switch mb-0">
-                                    <input type="checkbox" id="signals.sell_conditions.take_profit.enabled">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2 mb-0">익절(Take Profit) 로직</label>
-                            </div>
-                            <div class="row g-2">
-                                <div class="col-6">
-                                    <div class="input-group">
-                                        <span class="input-group-text">목표 수익</span>
-                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.take_profit.threshold" value="2.0">
-                                        <span class="input-group-text">%</span>
-                                    </div>
-                                </div>
-                                <div class="col-6">
-                                    <div class="input-group">
-                                        <span class="input-group-text">추적 익절</span>
-                                        <input type="number" step="0.1" class="form-control" id="signals.sell_conditions.take_profit.trailing_profit" value="1.0">
-                                        <span class="input-group-text">%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <small class="text-muted d-block mt-1">
-                                • 목표 수익: 진입가 대비 설정값 도달 시 익절<br>
-                                • 추적 익절: 최고가 대비 설정값 이상 하락 시 수익 보호 청산
-                            </small>
-                        </div>
-
-                        <!-- 기타 매도 조건 -->
                         <div class="mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <label class="toggle-switch mb-0">
-                                    <input type="checkbox" id="signals.sell_conditions.dead_cross.enabled">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2 mb-0">데드크로스 조건</label>
-                            </div>
-                            <small class="text-muted d-block ms-5">
-                                SMA 5/20 하향 교차 & 단기선 기울기 ≤ -0.1
-                            </small>
+                            <label class="form-label" for="sell_settings.TP_PCT">목표 수익률(%)</label>
+                            <input type="number" step="0.01" class="form-control" id="sell_settings.TP_PCT" value="0.18">
                         </div>
-
                         <div class="mb-3">
-                            <div class="d-flex align-items-center mb-2">
-                                <label class="toggle-switch mb-0">
-                                    <input type="checkbox" id="signals.sell_conditions.rsi.enabled">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2 mb-0">RSI 과매수 조건</label>
-                            </div>
-                            <div class="ms-5">
-                                <div class="input-group" style="width: 200px;">
-                                    <span class="input-group-text">RSI ≥</span>
-                                    <input type="number" class="form-control" id="signals.sell_conditions.rsi.threshold" value="60">
-                                </div>
-                                <small class="text-muted d-block mt-1">
-                                    2캔들 연속 조건 충족 시 청산
-                                </small>
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <div class="d-flex align-items-center">
-                                <label class="toggle-switch mb-0">
-                                    <input type="checkbox" id="signals.sell_conditions.bollinger.enabled">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2 mb-0">볼린저 밴드 상단 돌파</label>
-                            </div>
-                            <small class="text-muted d-block ms-5">
-                                BB(20, 2.0) 상단선 상향 돌파 시 즉시 청산
-                            </small>
+                            <label class="form-label" for="sell_settings.MINIMUM_TICKS">최소 확보 틱수</label>
+                            <input type="number" class="form-control" id="sell_settings.MINIMUM_TICKS" value="2">
                         </div>
                     </div>
                 </div>
