@@ -35,7 +35,7 @@
 import json
 from pathlib import Path
 from typing import Dict, Any
-from . import config
+from . import config as backend_config
 from config.default_settings import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class ConfigManager:
@@ -72,7 +72,7 @@ class ConfigManager:
         self.config_file = Path(__file__).parent.parent / 'config.json'
 
         # Config 모듈의 기본 설정을 그대로 사용해 두 클래스 간 일관성을 유지한다.
-        self.default_config = config.Config.DEFAULT_CONFIG.copy()
+        self.default_config = backend_config.Config.DEFAULT_CONFIG.copy()
 
         # 설정 파일 로드 (없으면 기본값 사용)
         self.load_config()
@@ -236,7 +236,7 @@ class ConfigManager:
             temp_file.replace(self.config_file)
             
             # config.py의 설정값 업데이트
-            config.config_instance.update_config(self.config)
+            backend_config.config_instance.update_config(self.config)
             
         except Exception as e:
             print(f"설정 파일 저장 실패: {e}")
@@ -330,6 +330,11 @@ class ConfigManager:
 
             merged = deep_merge(json.loads(json.dumps(self.config)), nested_config)
 
+            # 평면 구조 값도 병합하여 검증에 사용
+            for k, v in new_config.items():
+                if not isinstance(v, dict):
+                    merged[k] = v
+
             # 설정 검증
             self._validate_config(merged)
 
@@ -350,7 +355,7 @@ class ConfigManager:
             temp_file.replace(self.config_file)
             
             # 백엔드 설정 동기화
-            config.config_instance.update_config(self.config)
+            backend_config.config_instance.update_config(self.config)
             
             print("설정이 성공적으로 저장되었습니다.")
             
@@ -390,4 +395,26 @@ class ConfigManager:
             if 'investment_amount' in trading and trading['investment_amount'] <= 0:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
-                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.") 
+                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
+
+        # RSI/손절 익절 등 추가 검증은 Config 모듈 로직 활용
+        rsi_section = (
+            config.get('signals', {})
+            .get('common_conditions', {})
+            .get('rsi', {})
+        )
+        rsi_enabled = rsi_section.get('enabled')
+        rsi_period = rsi_section.get('period')
+        if rsi_enabled and (rsi_period is None or rsi_period <= 0):
+            raise ValueError("RSI 기간은 1 이상이어야 합니다.")
+
+        if (
+            config.get('stop_loss_enabled')
+            and config.get('take_profit_enabled')
+            and config.get('stop_loss') is not None
+            and config.get('take_profit') is not None
+        ):
+            if abs(config['stop_loss']) >= config['take_profit']:
+                raise ValueError("손절가가 익절가보다 크거나 같습니다.")
+
+
