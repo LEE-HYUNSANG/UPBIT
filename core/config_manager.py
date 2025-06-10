@@ -73,7 +73,7 @@ class ConfigManager:
         self.config_file = Path(__file__).parent.parent / 'config.json'
 
         # Config 모듈의 기본 설정을 그대로 사용해 두 클래스 간 일관성을 유지한다.
-        self.default_config = config.Config.DEFAULT_CONFIG.copy()
+        self.default_config = backend_config.Config.DEFAULT_CONFIG.copy()
 
         # 설정 파일 로드 (없으면 기본값 사용)
         self.load_config()
@@ -245,7 +245,7 @@ class ConfigManager:
             temp_file.replace(self.config_file)
             
             # config.py의 설정값 업데이트
-            config.config_instance.update_config(self.config)
+            backend_config.config_instance.update_config(self.config)
             
         except Exception as e:
             print(f"설정 파일 저장 실패: {e}")
@@ -349,6 +349,11 @@ class ConfigManager:
 
             merged = deep_merge(json.loads(json.dumps(self.config)), nested_config)
 
+            # 평면 구조 값도 병합하여 검증에 사용
+            for k, v in new_config.items():
+                if not isinstance(v, dict):
+                    merged[k] = v
+
             # 설정 검증
             self._validate_config(merged)
 
@@ -369,7 +374,7 @@ class ConfigManager:
             temp_file.replace(self.config_file)
             
             # 백엔드 설정 동기화
-            config.config_instance.update_config(self.config)
+            backend_config.config_instance.update_config(self.config)
             
             print("설정이 성공적으로 저장되었습니다.")
             

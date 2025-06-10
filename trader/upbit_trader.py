@@ -88,7 +88,7 @@ class TradingState:
         return krw_markets
 
     def check_market_condition(self):
-        """시장 상황 체크 및 파라미터 업데이트"""
+        """시장 상황을 분석하고 기록합니다."""
         now = datetime.now()
         if now - self.last_market_check < self.market_check_interval:
             return
@@ -96,18 +96,10 @@ class TradingState:
         # 업비트 종합지수 기반으로 시장 상황 분석
         market_condition, confidence = self.market_analyzer.analyze_market_condition()
         
-        # 파라미터 업데이트
-        updated_params = self.market_analyzer.update_parameters(market_condition, confidence)
-        self.config.update(updated_params)
-        
-        # 변경사항 저장
-        self.market_analyzer.save_parameters(self.config)
-        
-        # 로그 기록
-        summary = self.market_analyzer.get_market_summary(
-            market_condition, confidence, updated_params
+        # 시장 상황 로그
+        self.logger.log_info(
+            f"시장 상황: {market_condition} (신뢰도: {confidence:.2f})"
         )
-        self.logger.log_info(f"\n시장 상황 업데이트:\n{summary}")
         
         self.last_market_check = now
 
