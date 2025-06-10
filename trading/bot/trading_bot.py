@@ -24,7 +24,7 @@ class TradingBot:
         self.market_data = MarketData(self.exchange, settings)
         
         # 전략 초기화
-        self.strategy = OneMinStrategy(settings)
+        self.strategy = OneMinStrategy(settings, self.exchange)
         
         # 실행 상태
         self.is_running = False
@@ -123,7 +123,7 @@ class TradingBot:
                     continue
                     
                 # 매수 신호 확인
-                if self.strategy.check_buy_signal(df_1m, df_15m):
+                if self.strategy.check_buy_signal(symbol, df_1m, df_15m):
                     # 시장가 매수 실행
                     order = self.exchange.buy_market_order(symbol, investment_amount)
                     if order:

@@ -84,5 +84,25 @@
             "daily_summary": true,
             "signal": true
         }
+    },
+    "buy_score": {
+        "strength_weight": 2,
+        "strength_threshold": 130,
+        "volume_spike_weight": 2,
+        "volume_spike_threshold": 200,
+        "orderbook_weight": 1,
+        "orderbook_threshold": 130,
+        "momentum_weight": 1,
+        "momentum_threshold": 0.3,
+        "near_high_weight": 1,
+        "near_high_threshold": -1,
+        "trend_reversal_weight": 1,
+        "williams_weight": 1,
+        "williams_enabled": true,
+        "stochastic_weight": 1,
+        "stochastic_enabled": true,
+        "macd_weight": 1,
+        "macd_enabled": true,
+        "score_threshold": 6
     }
 }

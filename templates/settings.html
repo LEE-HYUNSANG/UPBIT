@@ -307,99 +307,88 @@
                         <table class="market-table table table-bordered">
                             <thead>
                                 <tr>
-                                    <th>지표</th>
-                                    <th>상승장</th>
-                                    <th>박스장</th>
-                                    <th>하락장</th>
+                                    <th>전략 지표</th>
+                                    <th>가중치(점수)</th>
+                                    <th>Value</th>
+                                    <th>단위</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>
-                                        진입 RSI 임계값
-                                        <small class="d-block text-muted">RSI 14가 이 값 이하일 때 진입 허용</small>
-                                    </td>
-                                    <td><input type="number" id="signals.buy_conditions.bull.rsi" value="40"></td>
-                                    <td><input type="number" id="signals.buy_conditions.range.rsi" value="35"></td>
-                                    <td><input type="number" id="signals.buy_conditions.bear.rsi" value="30"></td>
+                                    <td>체결강도</td>
+                                    <td><input type="number" id="buy_score.strength_weight" value="2"></td>
+                                    <td><input type="number" id="buy_score.strength_threshold" value="130"></td>
+                                    <td>%</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        볼린저 σ
-                                        <small class="d-block text-muted">BB(20, σ) 하단선 이탈 감도</small>
-                                    </td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bull.sigma" value="1.8"></td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.range.sigma" value="2.0"></td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bear.sigma" value="2.2"></td>
+                                    <td>실시간 거래량 급증</td>
+                                    <td><input type="number" id="buy_score.volume_spike_weight" value="2"></td>
+                                    <td><input type="number" id="buy_score.volume_spike_threshold" value="200"></td>
+                                    <td>%</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        거래량 배수(전봉)
-                                        <small class="d-block text-muted">current_vol ≥ prev_vol × 배수</small>
-                                    </td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bull.vol_prev" value="1.5"></td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.range.vol_prev" value="2.0"></td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bear.vol_prev" value="2.5"></td>
+                                    <td>호가 잔량 불균형</td>
+                                    <td><input type="number" id="buy_score.orderbook_weight" value="1"></td>
+                                    <td><input type="number" id="buy_score.orderbook_threshold" value="130"></td>
+                                    <td>%</td>
                                 </tr>
                                 <tr>
-                                    <td>
-                                        거래량 배수(5-MA)
-                                        <small class="d-block text-muted">current_vol ≥ vol_MA5 × 배수</small>
-                                    </td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bull.vol_ma" value="1.2"></td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.range.vol_ma" value="1.5"></td>
-                                    <td><input type="number" step="0.1" id="signals.buy_conditions.bear.vol_ma" value="1.8"></td>
+                                    <td>단기 등락률</td>
+                                    <td><input type="number" id="buy_score.momentum_weight" value="1"></td>
+                                    <td><input type="number" step="0.1" id="buy_score.momentum_threshold" value="0.3"></td>
+                                    <td>%</td>
                                 </tr>
                                 <tr>
+                                    <td>전고점 근접 여부</td>
+                                    <td><input type="number" id="buy_score.near_high_weight" value="1"></td>
+                                    <td><input type="number" id="buy_score.near_high_threshold" value="-1"></td>
+                                    <td>%</td>
+                                </tr>
+                                <tr>
+                                    <td>추세 전환 징후</td>
+                                    <td><input type="number" id="buy_score.trend_reversal_weight" value="1"></td>
+                                    <td>하락 &gt; 상승</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>Williams %R</td>
+                                    <td><input type="number" id="buy_score.williams_weight" value="1"></td>
                                     <td>
-                                        골든크로스 기울기
-                                        <small class="d-block text-muted">SMA5 slope ≥ min_slope (비율)</small>
+                                        <select id="buy_score.williams_enabled" class="form-select form-select-sm">
+                                            <option value="true">ON</option>
+                                            <option value="false">OFF</option>
+                                        </select>
                                     </td>
-                                    <td><input type="number" step="0.01" id="signals.buy_conditions.bull.slope" value="0.12"></td>
-                                    <td><input type="number" step="0.01" id="signals.buy_conditions.range.slope" value="0.10"></td>
-                                    <td><input type="number" step="0.01" id="signals.buy_conditions.bear.slope" value="0.08"></td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>Stochastic</td>
+                                    <td><input type="number" id="buy_score.stochastic_weight" value="1"></td>
+                                    <td>
+                                        <select id="buy_score.stochastic_enabled" class="form-select form-select-sm">
+                                            <option value="true">ON</option>
+                                            <option value="false">OFF</option>
+                                        </select>
+                                    </td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>MACD</td>
+                                    <td><input type="number" id="buy_score.macd_weight" value="1"></td>
+                                    <td>
+                                        <select id="buy_score.macd_enabled" class="form-select form-select-sm">
+                                            <option value="true">ON</option>
+                                            <option value="false">OFF</option>
+                                        </select>
+                                    </td>
+                                    <td>-</td>
                                 </tr>
                             </tbody>
                         </table>
 
-                        <!-- 매수 조건 토글 -->
-                        <div class="mt-4">
-                            <h6 class="mb-3">매수 조건</h6>
-                            <div class="mb-2">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="signals.buy_conditions.enabled.trend_filter">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2">15분 추세 필터</label>
-                            </div>
-                            <div class="mb-2">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="signals.buy_conditions.enabled.golden_cross">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2">SMA 5/20 골든크로스</label>
-                            </div>
-                            <div class="mb-2">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="signals.buy_conditions.enabled.rsi">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2">RSI 과매도 2캔들 연속</label>
-                            </div>
-                            <div class="mb-2">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="signals.buy_conditions.enabled.bollinger">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2">볼린저 밴드 하단선 이탈</label>
-                            </div>
-                            <div class="mb-2">
-                                <label class="toggle-switch">
-                                    <input type="checkbox" id="signals.buy_conditions.enabled.volume_surge">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                                <label class="ms-2">거래량 급증</label>
-                            </div>
+                        <div class="mt-3" style="max-width:200px;">
+                            <label class="form-label">매수 허용 점수</label>
+                            <input type="number" id="buy_score.score_threshold" value="6" class="form-control">
                         </div>
 
                         <!-- 매수가 선택 -->

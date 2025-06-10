@@ -322,6 +322,16 @@ class UpbitAPI:
             self.logger.error(f"호가 조회 실패: {str(e)}")
             return None
 
+    def get_recent_trades(self, market: str, count: int = 100):
+        """최근 체결 내역 조회"""
+        try:
+            import pyupbit
+            trades = pyupbit.get_recent_trades(market, count=count)
+            return trades
+        except Exception as e:
+            self.logger.error(f"최근 체결 조회 실패: {str(e)}")
+            return []
+
     def buy_market_order(self, market: str, price: float):
         """시장가 매수"""
         if not self.upbit:
