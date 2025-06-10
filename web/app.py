@@ -324,8 +324,20 @@ def save_settings():
                 'error': '설정 데이터가 비어있습니다.'
             }), 400
 
+        # 기존 설정과 병합하여 전체 설정 생성
+        def deep_merge(src, updates):
+            for k, v in updates.items():
+                if isinstance(v, dict) and isinstance(src.get(k), dict):
+                    src[k] = deep_merge(src.get(k, {}), v)
+                else:
+                    src[k] = v
+            return src
+
+        current_settings = config_manager.get_config()
+        merged_settings = deep_merge(json.loads(json.dumps(current_settings)), new_settings)
+
         # 설정 유효성 검사
-        valid, errors = validate_config(new_settings)
+        valid, errors = validate_config(merged_settings)
         if not valid:
             return jsonify({
                 'success': False,
@@ -334,12 +346,14 @@ def save_settings():
             }), 400
             
         # 설정 저장
-        if market_analyzer.save_settings(new_settings):
+        try:
+            config_manager.update_config(new_settings)
+            market_analyzer.update_config(config_manager.get_config())
             return jsonify({
                 'success': True,
                 'message': '설정이 성공적으로 저장되었습니다.'
             })
-        else:
+        except Exception:
             return jsonify({
                 'success': False,
                 'error': '설정 저장에 실패했습니다.'
