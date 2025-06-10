@@ -19,6 +19,7 @@ from telegram.error import TelegramError
 from dotenv import load_dotenv
 from pathlib import Path
 import logging
+import requests
 
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
 if dotenv_path.exists():
@@ -160,17 +161,19 @@ class TelegramNotifier:
     async def send_message(self, message: str):
         """
         텔레그램으로 메시지 전송
-        
+
         Args:
             message (str): 전송할 메시지
         """
         try:
-            await self.bot.send_message(
+            logger.debug(f"텔레그램 메시지 전송 시도: {message}")
+            msg = await self.bot.send_message(
                 chat_id=self.chat_id,
                 text=message,
                 parse_mode='HTML'
             )
             logger.info(f"텔레그램 메시지 전송 성공: {message[:50]}...")
+            logger.debug(f"텔레그램 응답: {msg}")
         except TelegramError as e:
             logger.error(f"텔레그램 메시지 전송 실패: {str(e)}")
         finally:
@@ -467,15 +470,24 @@ class TelegramNotifier:
     def send_message_sync(self, message: str):
         """동기 방식으로 메시지 전송"""
         try:
-            self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='HTML'
+            logger.debug(f"텔레그램 메시지 동기 전송 시도: {message}")
+            response = requests.post(
+                f"https://api.telegram.org/bot{self.bot_token}/sendMessage",
+                data={
+                    "chat_id": self.chat_id,
+                    "text": message,
+                    "parse_mode": "HTML",
+                },
+                timeout=10,
             )
+            response.raise_for_status()
             logger.info(f"텔레그램 메시지 전송 성공: {message[:50]}...")
+            logger.debug(f"텔레그램 응답 코드: {response.status_code}, 본문: {response.text}")
             return True
-        except TelegramError as e:
+        except requests.RequestException as e:
             logger.error(f"텔레그램 메시지 전송 실패: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.debug(f"응답 본문: {e.response.text}")
             return False
 
     def send_trade_alert_sync(self, trade_type: str, coin: str, price: float, amount: float):
