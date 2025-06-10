@@ -75,19 +75,19 @@ class TradingState:
         2. 해당 마켓의 거래 제한 여부
         3. 동일 마켓 포지션 중복 여부
         """
+        # 중복 포지션 체크
+        if market in self.active_positions:
+            return False, "이미 보유 중인 포지션 존재"
+
         # 최대 포지션 수 체크
         if len(self.active_positions) >= self.trading_config['max_positions']:
             return False, "최대 포지션 수 초과"
-            
+
         # 거래 제한 체크
         if market in self.market_cooldowns:
             cooldown_end = self.market_cooldowns[market]
             if datetime.now() < cooldown_end:
                 return False, f"거래 제한 중 (해제: {cooldown_end.strftime('%H:%M:%S')})"
-                
-        # 중복 포지션 체크
-        if market in self.active_positions:
-            return False, "이미 보유 중인 포지션 존재"
             
         return True, ""
         

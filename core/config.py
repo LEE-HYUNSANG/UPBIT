@@ -273,9 +273,20 @@ class Config:
                 raise ConfigError("config.json을 찾을 수 없습니다.")
             current_dir = current_dir.parent
         
-        self.config_file = current_dir / 'config.json'
-        logger.info(f"설정 파일 경로: {self.config_file}")
+        self._config_file = current_dir / 'config.json'
+        logger.info(f"설정 파일 경로: {self._config_file}")
         self.config = self.load_config()
+
+    @property
+    def config_file(self):
+        return self._config_file
+
+    @config_file.setter
+    def config_file(self, path):
+        self._config_file = Path(path)
+        # 기존 인스턴스가 초기화된 후 경로를 변경하는 경우 설정을 다시 로드
+        if hasattr(self, "config"):
+            self.config = self.load_config()
     
     def load_config(self) -> Dict[str, Any]:
         """
@@ -525,7 +536,46 @@ class Config:
         Returns:
             Dict[str, Any]: 현재 설정값의 복사본
         """
-        return self.config.copy()
+        cfg = self.config.copy()
+
+        if "trading" in cfg:
+            trading = cfg["trading"]
+            cfg["trading_enabled"] = trading.get("enabled")
+            cfg["investment_amount"] = trading.get("investment_amount")
+            cfg["max_coins"] = trading.get("max_coins")
+
+            coin = trading.get("coin_selection", {})
+            cfg["min_price"] = coin.get("min_price")
+            cfg["max_price"] = coin.get("max_price")
+            cfg["min_volume_24h"] = coin.get("min_volume_24h")
+            cfg["min_volume_1h"] = coin.get("min_volume_1h")
+            cfg["min_tick_ratio"] = coin.get("min_tick_ratio")
+
+        if "signals" in cfg:
+            signals = cfg["signals"]
+            common = signals.get("common_conditions", {})
+            rsi_common = common.get("rsi", {})
+            cfg["rsi_enabled"] = rsi_common.get("enabled")
+            cfg["rsi_period"] = rsi_common.get("period")
+            bollinger = common.get("bollinger", {})
+            cfg["bollinger_enabled"] = bollinger.get("enabled")
+
+            buy = signals.get("buy_conditions", {})
+            rsi_buy = buy.get("rsi", {})
+            cfg["rsi_buy_enabled"] = rsi_buy.get("enabled")
+            cfg["rsi_buy_threshold"] = rsi_buy.get("threshold")
+
+            sell = signals.get("sell_conditions", {})
+            rsi_sell = sell.get("rsi", {})
+            cfg["rsi_sell_enabled"] = rsi_sell.get("enabled")
+            cfg["rsi_sell_threshold"] = rsi_sell.get("threshold")
+
+            stop_loss = sell.get("stop_loss", {})
+            cfg["stop_loss_enabled"] = stop_loss.get("enabled")
+            if "threshold" in stop_loss:
+                cfg["stop_loss"] = abs(stop_loss.get("threshold"))
+
+        return cfg
 
 # 싱글톤 인스턴스 생성
 config_instance = Config()
