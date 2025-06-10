@@ -4,9 +4,6 @@ const socket = io();
 // DOM 요소
 const botStatus = document.getElementById('bot-status');
 const startBotButton = document.getElementById('toggleBot');
-if (startBotButton) {
-    startBotButton.disabled = true;
-}
 const monitoredCoinsTable = document.getElementById('monitored-coins');
 const holdingsTable = document.getElementById('holdingsTableBody');
 const statusIndicator = document.getElementById('botStatus');
@@ -246,13 +243,17 @@ function sellCoin(market) {
     }
 }
 
-// 시작/중지 버튼은 비활성화되어 있습니다.
-
 // 페이지 로드 시 초기 데이터 요청
 socket.emit('request_initial_data');
 
 // 봇 컨트롤 버튼 이벤트 리스너
 document.addEventListener('DOMContentLoaded', function() {
+    if (startBotButton) {
+        startBotButton.addEventListener('click', function() {
+            const action = startBotButton.textContent.trim() === '시작' ? 'start_bot' : 'stop_bot';
+            socket.emit(action);
+        });
+    }
     // 설정 버튼
     document.getElementById('settingsBtn').addEventListener('click', function() {
         window.location.href = '/settings';

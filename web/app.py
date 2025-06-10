@@ -449,22 +449,6 @@ def get_holdings():
             'message': str(e)
         }), 400
 
-@app.route('/api/balance', methods=['GET'])
-def get_balance():
-    """계좌 잔고 조회"""
-    try:
-        balance_info = market_analyzer.get_balance()
-        return jsonify({
-            'status': 'success',
-            'data': balance_info
-        })
-    except Exception as e:
-        logger.error(f"계좌 잔고 조회 중 오류 발생: {str(e)}")
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 400
-
 def update_holdings():
     """보유 코인 정보 업데이트"""
     try:
@@ -873,9 +857,9 @@ def handle_sell_all_coins():
 def init_bot_status():
     """웹 진입 시 초기 상태를 설정합니다."""
     try:
-        # 기본적으로 중지 상태로 시작
-        bot_status['is_running'] = False
-        market_analyzer.stop()
+        # 기본적으로 실행 상태로 시작
+        bot_status['is_running'] = True
+        market_analyzer.start()
         
         # 모니터링 주기 설정
         market_analyzer.monitoring_interval = 20  # 모니터링 주기 20초
@@ -891,8 +875,8 @@ def init_bot_status():
         # 초기 상태 반환
         return jsonify({
             'status': 'success',
-            'message': '봇이 중지 상태로 초기화되었습니다.',
-            'is_running': False,
+            'message': '봇이 실행 상태로 초기화되었습니다.',
+            'is_running': True,
             'settings': current_settings
         })
         
@@ -964,8 +948,8 @@ def get_monitored_coins():
 if __name__ == '__main__':
     try:
         # 초기 상태 설정
-        bot_status['is_running'] = False
-        market_analyzer.stop()  # 확실하게 중지 상태로 시작
+        bot_status['is_running'] = True
+        market_analyzer.start()  # 실행 상태로 시작
         
         # 백그라운드 스레드 시작
         update_thread = threading.Thread(target=background_updates)
