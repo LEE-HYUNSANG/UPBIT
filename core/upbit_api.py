@@ -213,11 +213,11 @@ class UpbitAPI:
             data = {
                 'market': market,
                 'side': side,
-                'volume': str(volume),
+                'volume': str(round(float(volume), 8)),
                 'ord_type': ord_type
             }
             
-            if price:
+            if price is not None:
                 data['price'] = str(price)
                 
             headers = self._get_token(data)
@@ -227,15 +227,23 @@ class UpbitAPI:
                 
             response = requests.post(url, json=data, headers=headers)
             self.logger.info(f"주문 실행: {response.status_code}")
-            
+
             if not response.ok:
-                self.logger.error(f"API 오류: {response.status_code} - {response.text}")
-                return None
-                
-            return response.json()
+                try:
+                    err_json = response.json()
+                    error_detail = err_json.get('error', {}).get('message', response.text)
+                except Exception:
+                    error_detail = response.text
+                self.logger.error(f"API 오류: {response.status_code} - {error_detail}")
+                return {'error': error_detail, 'status': response.status_code}
+
+            result = response.json()
+            if isinstance(result, dict) and 'error' in result:
+                self.logger.error(f"주문 실패: {result['error'].get('message', '')}")
+            return result
         except Exception as e:
             self.logger.error(f"주문 실행 실패: {str(e)}")
-            return None
+            return {'error': str(e)}
 
     def get_order_status(self, uuid):
         """주문 상태 조회"""
