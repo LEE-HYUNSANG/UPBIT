@@ -35,7 +35,9 @@
 import json
 from pathlib import Path
 from typing import Dict, Any
-from . import config
+
+# config 모듈을 backend_config 이름으로 임포트하여 가독성을 높인다.
+from . import config as backend_config
 from config.order_defaults import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class ConfigManager:
@@ -424,8 +426,9 @@ class ConfigManager:
             if 'max_coins' in trading and trading['max_coins'] <= 0:
                 raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
 
-        if 'signals' in config:
-            signals = config['signals']
+        # 신호 관련 설정 검증
+        if 'signals' in cfg:
+            signals = cfg['signals']
             common = signals.get('common_conditions', {})
             rsi = common.get('rsi', {})
             if rsi.get('enabled', False):
