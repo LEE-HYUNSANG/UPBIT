@@ -67,181 +67,14 @@ class ConfigManager:
     """
     
     def __init__(self):
-        """
-        설정 관리자 초기화
-        
-        1. 설정 파일 경로 설정:
-           - 프로젝트 루트의 config.json 사용
-           - 상대 경로를 절대 경로로 변환
-        
-        2. 기본 설정 초기화:
-           - 거래 설정
-           - 기술적 지표 설정
-           - 매매 조건 설정
-           - 알림 설정
-        """
+        """ConfigManager 초기화"""
+        # 프로젝트 루트의 config.json 경로 설정
         self.config_file = Path(__file__).parent.parent / 'config.json'
-        self.default_config = {
-            "version": "1.0.0",
-            "trading": {
-                "enabled": True,
-                "investment_amount": 100000,
-                "max_coins": 5,
-                "coin_selection": {
-                    "min_price": 100,
-                    "max_price": 26666,
-                    "min_volume_24h": 1400000000,
-                    "min_volume_1h": 100000000,
-                    "min_tick_ratio": 0.04,
-                    "excluded_coins": [
-                        "KRW-ETHW",
-                        "KRW-ETHF",
-                        "KRW-XCORE"
-                    ]
-                }
-            },
-            "market_analysis": {
-                "thresholds": {
-                    "bull": {
-                        "trend_strength": 0.5,
-                        "volatility": 0.012,
-                        "volume_increase": 1.3,
-                        "market_dominance": 0.65,
-                        "confidence_threshold": 0.7
-                    },
-                    "bear": {
-                        "trend_strength": 0.5,
-                        "volatility": 0.015,
-                        "volume_increase": 1.5,
-                        "market_dominance": 0.7,
-                        "confidence_threshold": 0.7
-                    }
-                },
-                "parameters": {
-                    "bull": {
-                        "rsi_threshold": 70,
-                        "volume_multiplier": 1.5,
-                        "profit_target": 2.0,
-                        "stop_loss": 1.0
-                    },
-                    "bear": {
-                        "rsi_threshold": 30,
-                        "volume_multiplier": 2.0,
-                        "profit_target": 1.5,
-                        "stop_loss": 1.5
-                    },
-                    "neutral": {
-                        "rsi_threshold": 50,
-                        "volume_multiplier": 1.8,
-                        "profit_target": 1.8,
-                        "stop_loss": 1.2
-                    }
-                },
-                "weights": {
-                    "trend": 0.4,
-                    "volatility": 0.2,
-                    "volume": 0.2,
-                    "market_dominance": 0.2
-                },
-                "check_interval_minutes": 15
-            },
-            "signals": {
-                "enabled": True,
-                "common_conditions": {
-                    "enabled": True,
-                    "rsi": {
-                        "enabled": True,
-                        "period": 14
-                    },
-                    "bollinger": {
-                        "enabled": True,
-                        "period": 20,
-                        "k": 2.0
-                    },
-                    "volume_ma": {
-                        "enabled": True,
-                        "period": 5
-                    }
-                },
-                "buy_conditions": {
-                    "enabled": True,
-                    "rsi": {
-                        "enabled": True,
-                        "threshold": 30
-                    },
-                    "golden_cross": {
-                        "enabled": True,
-                        "short_period": 5,
-                        "long_period": 20
-                    },
-                    "bollinger": {
-                        "enabled": True,
-                        "threshold": -2
-                    }
-                },
-                "sell_conditions": {
-                    "enabled": True,
-                    "stop_loss": {
-                        "enabled": True,
-                        "threshold": 3.0
-                    },
-                    "take_profit": {
-                        "enabled": True,
-                        "threshold": 5.0
-                    },
-                    "rsi": {
-                        "enabled": True,
-                        "threshold": 70
-                    },
-                    "dead_cross": {
-                        "enabled": True,
-                        "short_period": 5,
-                        "long_period": 20
-                    },
-                    "bollinger": {
-                        "enabled": True,
-                        "threshold": 2
-                    }
-                }
-            },
-            "notifications": {
-                "trade": {
-                    "start": True,
-                    "complete": True,
-                    "profit_loss": True
-                },
-                "system": {
-                    "error": True,
-                    "daily_summary": True,
-                    "signal": True
-                }
-            },
-            "buy_score": {
-                "strength_weight": 2,
-                "strength_threshold": 130,
-                "volume_spike_weight": 2,
-                "volume_spike_threshold": 200,
-                "orderbook_weight": 1,
-                "orderbook_threshold": 130,
-                "momentum_weight": 1,
-                "momentum_threshold": 0.3,
-                "near_high_weight": 1,
-                "near_high_threshold": -1,
-                "trend_reversal_weight": 1,
-                "williams_weight": 1,
-                "williams_enabled": True,
-                "stochastic_weight": 1,
-                "stochastic_enabled": True,
-                "macd_weight": 1,
-                "macd_enabled": True,
-                "score_threshold": 6
-            },
-            "buy_settings": DEFAULT_BUY_SETTINGS.copy(),
-            "sell_settings": DEFAULT_SELL_SETTINGS.copy(),
-            "auto_settings": {
-                "enabled": False
-            }
-        }
+
+        # Config 모듈의 기본 설정을 그대로 사용해 두 클래스 간 일관성을 유지한다.
+        self.default_config = config.Config.DEFAULT_CONFIG.copy()
+
+        # 설정 파일 로드 (없으면 기본값 사용)
         self.load_config()
     
     def load_config(self):
@@ -253,6 +86,16 @@ class ConfigManager:
                     # 기본값에 로드된 설정 업데이트 (중첩 구조만 사용)
                     self.config = self.default_config.copy()
                     self._deep_update(self.config, self._extract_nested_config(loaded_config))
+
+                    # 평면 구조 값도 함께 반영
+                    for key in [
+                        "investment_amount", "max_coins", "rsi_enabled",
+                        "rsi_period", "rsi_buy_enabled", "rsi_buy_threshold",
+                        "rsi_sell_enabled", "rsi_sell_threshold", "trading_enabled",
+                        "stop_loss_enabled", "stop_loss", "bollinger_enabled"
+                    ]:
+                        if key in loaded_config:
+                            self.config[key] = loaded_config[key]
             else:
                 self.config = self.default_config.copy()
                 self.save_config()
@@ -261,27 +104,95 @@ class ConfigManager:
             self.config = self.default_config.copy()
     
     def _extract_nested_config(self, config):
-        """평면 구조의 설정을 중첩 구조로 변환"""
+        """평면 구조의 설정을 필요한 부분만 중첩 구조로 변환"""
         nested = {}
-        
-        # trading 섹션
-        if "trading" not in config:
-            nested["trading"] = {
-                "enabled": config.get("trading_enabled", True),
-                "investment_amount": config.get("investment_amount", 100000),
-                "max_coins": config.get("max_coins", 5),
-                "coin_selection": {
-                    "min_price": config.get("min_price", 100),
-                    "max_price": config.get("max_price", 26666),
-                    "min_volume_24h": config.get("min_volume_24h", 1400000000),
-                    "min_volume_1h": config.get("min_volume_1h", 100000000),
-                    "min_tick_ratio": config.get("min_tick_ratio", 0.04)
-                }
-            }
-        else:
-            nested["trading"] = config["trading"]
 
-        # 나머지 중첩 구조는 그대로 유지
+        # trading 섹션 처리
+        if any(k in config for k in [
+            "trading", "trading_enabled", "investment_amount", "max_coins",
+            "min_price", "max_price", "min_volume_24h", "min_volume_1h",
+            "min_tick_ratio"]):
+            trading = config.get("trading", {}).copy()
+            if "trading_enabled" in config:
+                trading["enabled"] = config["trading_enabled"]
+            if "investment_amount" in config:
+                trading["investment_amount"] = config["investment_amount"]
+            if "max_coins" in config:
+                trading["max_coins"] = config["max_coins"]
+
+            coin = trading.get("coin_selection", {}).copy()
+            if "min_price" in config:
+                coin["min_price"] = config["min_price"]
+            if "max_price" in config:
+                coin["max_price"] = config["max_price"]
+            if "min_volume_24h" in config:
+                coin["min_volume_24h"] = config["min_volume_24h"]
+            if "min_volume_1h" in config:
+                coin["min_volume_1h"] = config["min_volume_1h"]
+            if "min_tick_ratio" in config:
+                coin["min_tick_ratio"] = config["min_tick_ratio"]
+            if coin:
+                trading["coin_selection"] = coin
+            nested["trading"] = trading
+
+        # signals 섹션 - RSI 관련 키만 처리하면 충분
+        if any(k in config for k in [
+            "rsi_enabled", "rsi_period", "rsi_buy_enabled",
+            "rsi_buy_threshold", "rsi_sell_enabled", "rsi_sell_threshold",
+            "bollinger_enabled", "stop_loss_enabled", "stop_loss"]):
+            signals = nested.get("signals", {})
+            common = signals.get("common_conditions", {})
+            rsi_common = common.get("rsi", {})
+            if "rsi_enabled" in config:
+                rsi_common["enabled"] = config["rsi_enabled"]
+            if "rsi_period" in config:
+                rsi_common["period"] = config["rsi_period"]
+            if rsi_common:
+                common["rsi"] = rsi_common
+            if "bollinger_enabled" in config:
+                common.setdefault("bollinger", {})["enabled"] = config["bollinger_enabled"]
+            if common:
+                signals.setdefault("common_conditions", {}).update(common)
+
+            buy = signals.get("buy_conditions", {})
+            rsi_buy = buy.get("rsi", {})
+            if "rsi_buy_enabled" in config:
+                rsi_buy["enabled"] = config["rsi_buy_enabled"]
+            if "rsi_buy_threshold" in config:
+                rsi_buy["threshold"] = config["rsi_buy_threshold"]
+            if "rsi_enabled" in config and not config["rsi_enabled"]:
+                rsi_buy["enabled"] = False
+            if rsi_buy:
+                buy["rsi"] = rsi_buy
+            if buy:
+                signals.setdefault("buy_conditions", {}).update(buy)
+
+            sell = signals.get("sell_conditions", {})
+            rsi_sell = sell.get("rsi", {})
+            if "rsi_sell_enabled" in config:
+                rsi_sell["enabled"] = config["rsi_sell_enabled"]
+            if "rsi_sell_threshold" in config:
+                rsi_sell["threshold"] = config["rsi_sell_threshold"]
+            if "rsi_enabled" in config and not config["rsi_enabled"]:
+                rsi_sell["enabled"] = False
+            if rsi_sell:
+                sell["rsi"] = rsi_sell
+
+            if "stop_loss_enabled" in config or "stop_loss" in config:
+                sl = sell.get("stop_loss", {})
+                if "stop_loss_enabled" in config:
+                    sl["enabled"] = config["stop_loss_enabled"]
+                if "stop_loss" in config:
+                    # Config 모듈의 검증 규칙을 통과하도록 음수 값으로 저장
+                    sl["threshold"] = -abs(config["stop_loss"])
+                sell["stop_loss"] = sl
+            if sell:
+                signals.setdefault("sell_conditions", {}).update(sell)
+
+            if signals:
+                nested["signals"] = signals
+
+        # 기타 중첩 섹션은 그대로 복사
         for key in ["signals", "notifications", "auto_settings", "version", "buy_score"]:
             if key in config:
                 nested[key] = config[key]
@@ -333,14 +244,53 @@ class ConfigManager:
     def get_config(self) -> Dict[str, Any]:
         """
         현재 설정 반환
-        
+
         현재 메모리에 로드된 설정의 복사본을 반환합니다.
         직접 수정을 방지하기 위해 깊은 복사본을 반환합니다.
-        
+
         Returns:
             Dict[str, Any]: 현재 설정값의 복사본
         """
-        return self.config.copy()
+        cfg = self.config.copy()
+
+        # 중첩 구조에서 자주 사용하는 항목을 평면 키로 노출한다.
+        if "trading" in cfg:
+            trading = cfg["trading"]
+            cfg["trading_enabled"] = trading.get("enabled")
+            cfg["investment_amount"] = trading.get("investment_amount")
+            cfg["max_coins"] = trading.get("max_coins")
+
+            coin = trading.get("coin_selection", {})
+            cfg["min_price"] = coin.get("min_price")
+            cfg["max_price"] = coin.get("max_price")
+            cfg["min_volume_24h"] = coin.get("min_volume_24h")
+            cfg["min_volume_1h"] = coin.get("min_volume_1h")
+            cfg["min_tick_ratio"] = coin.get("min_tick_ratio")
+
+        if "signals" in cfg:
+            signals = cfg["signals"]
+            common = signals.get("common_conditions", {})
+            rsi_common = common.get("rsi", {})
+            cfg["rsi_enabled"] = rsi_common.get("enabled")
+            cfg["rsi_period"] = rsi_common.get("period")
+            bollinger = common.get("bollinger", {})
+            cfg["bollinger_enabled"] = bollinger.get("enabled")
+
+            buy = signals.get("buy_conditions", {})
+            rsi_buy = buy.get("rsi", {})
+            cfg["rsi_buy_enabled"] = rsi_buy.get("enabled")
+            cfg["rsi_buy_threshold"] = rsi_buy.get("threshold")
+
+            sell = signals.get("sell_conditions", {})
+            rsi_sell = sell.get("rsi", {})
+            cfg["rsi_sell_enabled"] = rsi_sell.get("enabled")
+            cfg["rsi_sell_threshold"] = rsi_sell.get("threshold")
+
+            stop_loss = sell.get("stop_loss", {})
+            cfg["stop_loss_enabled"] = stop_loss.get("enabled")
+            cfg["stop_loss"] = stop_loss.get("threshold")
+
+        return cfg
     
     def update_config(self, new_config: Dict[str, Any]):
         """
@@ -366,9 +316,16 @@ class ConfigManager:
             IOError: 파일 저장 실패
         """
         try:
+            # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
+            nested_config = self._extract_nested_config(new_config)
+
             # 설정 검증
-            self._validate_config(new_config)
-            
+            self._validate_config(nested_config)
+
+            # 평면 구조 값은 그대로 보존하여 config.json에 함께 저장한다
+            for k, v in new_config.items():
+                self.config[k] = v
+
             # 중첩된 설정 업데이트
             def deep_update(d, u):
                 for k, v in u.items():
@@ -377,9 +334,9 @@ class ConfigManager:
                     else:
                         d[k] = v
                 return d
-            
+
             # 설정 업데이트
-            self.config = deep_update(self.config, new_config)
+            self.config = deep_update(self.config, nested_config)
             
             # 설정 파일 저장
             temp_file = self.config_file.with_suffix('.tmp')

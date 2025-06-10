@@ -7,6 +7,8 @@ from datetime import datetime
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from core.market_analyzer import MarketAnalyzer
 from core.config_manager import ConfigManager
 import threading
@@ -14,8 +16,6 @@ import time
 from core.trading_logic import TradingLogic
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 from core.constants import DEFAULT_COIN_SELECTION
-
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # .env 파일 로드
 load_dotenv()
