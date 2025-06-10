@@ -1289,6 +1289,29 @@ class MarketAnalyzer:
             logger.error(f"캔들 데이터 조회 중 오류: {str(e)}")
             return []
 
+    def prepare_dataframe(self, candles: List[Dict]) -> pd.DataFrame:
+        """캔들 데이터를 분석용 DataFrame으로 변환"""
+        try:
+            df = pd.DataFrame(candles)
+            rename_map = {
+                'opening_price': 'open',
+                'high_price': 'high',
+                'low_price': 'low',
+                'trade_price': 'close',
+                'candle_acc_trade_volume': 'volume'
+            }
+            df = df.rename(columns=rename_map)
+
+            numeric_cols = ['open', 'high', 'low', 'close', 'volume']
+            for col in numeric_cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
+
+            return df
+        except Exception as e:
+            logger.error(f"데이터프레임 변환 오류: {str(e)}")
+            return pd.DataFrame()
+
     def calculate_moving_average(self, candles: List[Dict], period: int = 20) -> Optional[List[float]]:
         """이동평균선 계산"""
         try:
