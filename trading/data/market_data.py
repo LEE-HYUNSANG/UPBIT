@@ -71,7 +71,11 @@ class MarketData:
             
             # 가격 범위 내의 코인 필터링
             investable = self.exchange.get_investable_tickers(min_price, max_price)
-            
+
+            # 제외 코인은 조회하지 않도록 필터링
+            excluded = set(coin_sel.get('excluded_coins', []))
+            investable = [ticker for ticker in investable if ticker not in excluded]
+
             # 24시간 거래대금 및 1시간 평균 거래대금 필터링
             tradable = []
             for ticker in investable:
