@@ -35,7 +35,7 @@
 import json
 from pathlib import Path
 from typing import Dict, Any
-from . import config
+from . import config as backend_config
 from .config import ConfigError
 from config.default_settings import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
@@ -393,8 +393,8 @@ class ConfigManager:
             ValueError: 유효하지 않은 설정값
         """
         # 거래 설정 검증
-        if 'trading' in config:
-            trading = config['trading']
+        if 'trading' in cfg:
+            trading = cfg['trading']
             if 'coin_selection' in trading:
                 coin_selection = trading['coin_selection']
                 if 'min_price' in coin_selection and coin_selection['min_price'] < 0:
@@ -416,8 +416,8 @@ class ConfigManager:
             if 'max_coins' in trading and trading['max_coins'] <= 0:
                 raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
 
-        if 'signals' in config:
-            signals = config['signals']
+        if 'signals' in cfg:
+            signals = cfg['signals']
             common = signals.get('common_conditions', {})
             rsi = common.get('rsi', {})
             if rsi.get('enabled', False):
