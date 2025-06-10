@@ -2,7 +2,7 @@ from flask import Flask, render_template, jsonify, request
 from flask_socketio import emit
 from extensions import socketio
 import logging
-from logging.handlers import RotatingFileHandler
+from concurrent_log_handler import ConcurrentRotatingFileHandler
 import json
 import os
 from dotenv import load_dotenv
@@ -71,7 +71,7 @@ except Exception as e:
 if not os.path.exists('logs'):
     os.makedirs('logs')
 
-file_handler = RotatingFileHandler(
+file_handler = ConcurrentRotatingFileHandler(
     'logs/trading.log',
     maxBytes=1024 * 1024,  # 1MB
     backupCount=10,

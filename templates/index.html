@@ -253,11 +253,7 @@
                                 <thead>
                                     <tr>
                                         <th>코인 ID</th>
-                                        <th>15분 추세</th>
-                                        <th>골든크로스</th>
-                                        <th>RSI 과매도</th>
-                                        <th>볼린저 밴드</th>
-                                        <th>거래량 급증</th>
+                                        <th>점수</th>
                                         <th>상태</th>
                                         <th>매수</th>
                                     </tr>
@@ -474,24 +470,9 @@
             if (coins && coins.length > 0) {
                 coins.forEach(coin => {
                     const row = document.createElement('tr');
-
-                    const indicators = coin.indicators || {};
-                    const values = coin.values || {};
-
-                    const signalMark = (flag, value) => {
-                        const display = value !== undefined && value !== null
-                            ? ` (${typeof value === 'number' ? value.toFixed(2) : value})`
-                            : '';
-                        return flag ? `○${display}` : `×${display}`;
-                    };
-
                     row.innerHTML = `
                         <td>${coin.market}</td>
-                        <td>${signalMark(indicators.trend_filter, values.ema50)}</td>
-                        <td>${signalMark(indicators.golden_cross, values.sma5_slope)}</td>
-                        <td>${signalMark(indicators.rsi_oversold, values.rsi14)}</td>
-                        <td>${signalMark(indicators.bollinger_break, values.bb_lower)}</td>
-                        <td>${signalMark(indicators.volume_surge, values.volume)}</td>
+                        <td>${coin.score.toFixed(2)} / ${coin.threshold}</td>
                         <td><span class="badge bg-info">${coin.status}</span></td>
                         <td>
                             <button class="btn btn-sm btn-success" onclick="marketBuy('${coin.market}')">

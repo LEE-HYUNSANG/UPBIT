@@ -1,6 +1,6 @@
 import os
 import logging
-from logging.handlers import RotatingFileHandler
+from concurrent_log_handler import ConcurrentRotatingFileHandler
 from datetime import datetime
 
 def setup_logging():
@@ -18,7 +18,7 @@ def setup_logging():
     logger.setLevel(logging.DEBUG)
 
     # 파일 핸들러 설정 (10MB 크기, 최대 5개 파일 유지)
-    file_handler = RotatingFileHandler(
+    file_handler = ConcurrentRotatingFileHandler(
         log_file,
         maxBytes=10*1024*1024,
         backupCount=5,
