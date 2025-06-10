@@ -9,94 +9,12 @@ import logging
 import socketio
 import asyncio
 from flask_socketio import SocketIO
+from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 
 # 설정 파일 경로
 SETTINGS_FILE = 'config/settings.json'
 
-# 기본 설정값 정의
-DEFAULT_SETTINGS = {
-    "version": "1.0.0",
-    "trading": {
-        "enabled": True,
-        "investment_amount": 10000,
-        "max_coins": 5,
-        "coin_selection": {
-            "min_price": 700,
-            "max_price": 23000,
-            "top_volume_count": 20,
-            "excluded_coins": ["KRW-ETHW", "KRW-ETHF", "KRW-XCORE", "KRW-GAS"],
-            "buy_price_type": "market",
-            "sell_price_type": "market"
-        }
-    },
-    "signals": {
-        "enabled": False,
-        "buy_conditions": {
-            "bull": {
-                "rsi": 40,
-                "sigma": 1.8,
-                "vol_prev": 1.5,
-                "vol_ma": 1.2,
-                "slope": 0.12
-            },
-            "range": {
-                "rsi": 35,
-                "sigma": 2.0,
-                "vol_prev": 2.0,
-                "vol_ma": 1.5,
-                "slope": 0.10
-            },
-            "bear": {
-                "rsi": 30,
-                "sigma": 2.2,
-                "vol_prev": 2.5,
-                "vol_ma": 1.8,
-                "slope": 0.08
-            },
-            "enabled": {
-                "trend_filter": True,
-                "golden_cross": True,
-                "rsi": True,
-                "bollinger": True,
-                "volume_surge": True
-            }
-        },
-        "sell_conditions": {
-            "stop_loss": {
-                "enabled": True,
-                "threshold": -2.5,       # 고정 손절 -2.5%
-                "trailing_stop": 0.5     # 추적 손절 0.5%
-            },
-            "take_profit": {
-                "enabled": True,
-                "threshold": 2.0,        # 목표 수익 2.0%
-                "trailing_profit": 1.0    # 추적 익절 1.0%
-            },
-            "dead_cross": {
-                "enabled": True          # SMA 5/20 데드크로스 & 기울기 ≤ -0.1
-            },
-            "rsi": {
-                "enabled": True,
-                "threshold": 60          # RSI ≥ 60 2캔들 연속
-            },
-            "bollinger": {
-                "enabled": True          # BB(20, 2.0) 상단선 돌파
-            }
-        }
-    },
-    "notifications": {
-        "trade": {
-            "start": True,
-            "complete": True,
-            "profit_loss": True
-        },
-        "system": {
-            "error": True,
-            "daily_summary": True,
-            "signal": True
-        }
-    }
-}
+# 기본 설정은 config.default_settings 모듈에서 불러옵니다.
 
 analyzer = MarketAnalyzer()
 api = Blueprint('api', __name__)
