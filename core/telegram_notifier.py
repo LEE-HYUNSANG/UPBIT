@@ -21,7 +21,10 @@ from pathlib import Path
 import logging
 
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
-load_dotenv(dotenv_path)
+if dotenv_path.exists():
+    load_dotenv(dotenv_path)
+else:
+    load_dotenv()
 
 logger = logging.getLogger(__name__)
 

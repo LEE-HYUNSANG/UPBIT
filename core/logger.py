@@ -15,6 +15,8 @@ from datetime import datetime
 import os
 from typing import Optional
 
+from .telegram_notifier import TelegramNotifier
+
 class TradingLogger:
     """
     거래 시스템 로깅을 담당하는 클래스
@@ -36,8 +38,14 @@ class TradingLogger:
         self.log_dir = log_dir
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
-            
+
         self.logger = self._setup_logger()
+
+        # 텔레그램 알림 초기화 시도
+        try:
+            self.telegram = TelegramNotifier()
+        except Exception:
+            self.telegram = None
         
     def _setup_logger(self) -> logging.Logger:
         """
@@ -102,6 +110,11 @@ class TradingLogger:
         if reason:
             msg += f" - {reason}"
         self.logger.info(msg)
+        if self.telegram:
+            try:
+                self.telegram.send_trade_alert_sync(action, market, price, volume)
+            except Exception:
+                pass
         
     def log_signal(self, market: str, signal_type: str, conditions: dict):
         """
@@ -120,6 +133,11 @@ class TradingLogger:
             f"{k}: {'✓' if v else '✗'}" for k, v in conditions.items()
         )
         self.logger.info(f"[{market}] {signal_type} 조건: {conditions_str}")
+        if self.telegram:
+            try:
+                self.telegram.send_message_sync(f"[{market}] {signal_type} 조건: {conditions_str}")
+            except Exception:
+                pass
         
     def log_error(self, error_msg: str, exc_info: bool = False):
         """
@@ -131,6 +149,11 @@ class TradingLogger:
                 기본값: False
         """
         self.logger.error(error_msg, exc_info=exc_info)
+        if self.telegram:
+            try:
+                self.telegram.send_error_alert_sync(error_msg)
+            except Exception:
+                pass
         
     def log_info(self, msg: str):
         """
@@ -149,6 +172,11 @@ class TradingLogger:
             msg (str): 경고 메시지
         """
         self.logger.warning(msg)
+        if self.telegram:
+            try:
+                self.telegram.send_system_status_sync(msg)
+            except Exception:
+                pass
         
     def log_metrics(self, metrics: dict):
         """
@@ -164,6 +192,12 @@ class TradingLogger:
         for key, value in metrics.items():
             self.logger.info(f"{key}: {value}")
         self.logger.info("================")
+        if self.telegram:
+            try:
+                message = "\n".join(f"{k}: {v}" for k, v in metrics.items())
+                self.telegram.send_system_status_sync(f"[성과 지표]\n{message}")
+            except Exception:
+                pass
         
     def log_risk_status(self, risk_metrics: dict):
         """
@@ -179,4 +213,10 @@ class TradingLogger:
         self.logger.info("=== 위험 관리 상태 ===")
         for key, value in risk_metrics.items():
             self.logger.info(f"{key}: {value}")
-        self.logger.info("====================") 
+        self.logger.info("====================")
+        if self.telegram:
+            try:
+                message = "\n".join(f"{k}: {v}" for k, v in risk_metrics.items())
+                self.telegram.send_system_status_sync(f"[위험 관리]\n{message}")
+            except Exception:
+                pass
