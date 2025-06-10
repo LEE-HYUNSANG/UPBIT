@@ -39,7 +39,6 @@ import time
 from collections import deque
 from functools import wraps
 from config.default_settings import DEFAULT_SETTINGS
-import ta
 
 # 환경변수 로드
 load_dotenv()
@@ -769,64 +768,39 @@ class MarketAnalyzer:
             
             # 선정된 코인 분석
             monitored_coins = []
+            threshold = self.config.get('buy_score', {}).get('score_threshold', 0)
             for market in selected_markets:
                 try:
                     market_code = market['market']
                     logger.debug(f"{market_code} 분석 시작")
-                    
-                    # 5분봉 데이터 조회
-                    candles_5m = self.get_candles(market_code, interval='minute5', count=100)
-                    if not candles_5m:
+
+                    candles_1m = self.get_candles(market_code, interval='minute1', count=30)
+                    if not candles_1m:
                         continue
-                        
-                    # 15분봉 데이터 조회
-                    candles_15m = self.get_candles(market_code, interval='minute15', count=100)
-                    if not candles_15m:
-                        continue
-                    
-                    # DataFrame 변환
-                    df_5m = self.prepare_dataframe(candles_5m)
-                    df_15m = self.prepare_dataframe(candles_15m)
-                    
-                    # 지표 계산
-                    self.add_indicators(df_5m, df_15m)
-                    
-                    # 매수 조건 확인
-                    config = self.config.get('indicators', {})
-                    is_buy, conditions = self.check_buy_conditions(df_5m, df_15m, config)
-                    
-                    # 코인 데이터 생성
+
+                    df_1m = self.prepare_dataframe(candles_1m)
+                    score = self.calculate_buy_score(market_code, df_1m)
+
                     coin_data = {
                         'market': market_code,
                         'name': market['name'],
                         'current_price': market['current_price'],
                         'change_rate': market['change_rate'],
                         'trade_volume': market['trade_volume'],
-                        'indicators': conditions,
-                        'values': {
-                            'rsi': conditions['values'].get('rsi'),
-                            'slope': conditions['values'].get('slope'),
-                            'ema50': conditions['values'].get('ema50'),
-                            'sma5_slope': conditions['values'].get('slope'),
-                            'rsi14': conditions['values'].get('rsi'),
-                            'bb_lower': conditions['values'].get('bb_lower'),
-                            'volume': conditions['values'].get('volume'),
-                            'volume_ratio': conditions['values'].get('volume_ma'),
-                            'bb_position': conditions['values'].get('bb_lower')
-                        },
-                        'status': '매수 가능' if is_buy else '모니터링',
+                        'score': score,
+                        'threshold': threshold,
+                        'status': '매수 가능' if score >= threshold else '모니터링',
                         'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                     }
-                    
+
                     monitored_coins.append(coin_data)
-                    
+
                 except Exception as e:
                     logger.error(f"{market_code} 분석 중 오류 발생: {str(e)}")
                     continue
-            
-            # 신호 강도 기준으로 정렬
-            monitored_coins.sort(key=lambda x: sum(1 for v in x['indicators'].values() if v), reverse=True)
-            
+
+            monitored_coins.sort(key=lambda x: x['score'], reverse=True)
+
             logger.info(f"모니터링 대상 코인 {len(monitored_coins)}개 선택됨")
             return monitored_coins
             
@@ -1367,266 +1341,116 @@ class MarketAnalyzer:
             logger.error(f"볼린저 밴드 계산 중 오류: {str(e)}")
             return None
 
-    def add_indicators(self, df_5m: pd.DataFrame, df_15m: pd.DataFrame) -> None:
-        """
-        5분봉과 15분봉 데이터에 기술적 지표를 추가합니다.
-        
-        Args:
-            df_5m (pd.DataFrame): 5분봉 데이터 (OHLCV)
-            df_15m (pd.DataFrame): 15분봉 데이터 (OHLCV)
-        """
+    def get_recent_trades(self, market: str, count: int = 100) -> List[Dict]:
+        """최근 체결 내역 조회"""
         try:
-            # 5분봉 지표
-            df_5m['SMA5'] = ta.trend.sma_indicator(df_5m['close'], window=5)
-            df_5m['SMA20'] = ta.trend.sma_indicator(df_5m['close'], window=20)
-            df_5m['SMA5_slope'] = (df_5m['SMA5'] - df_5m['SMA5'].shift(1)) / df_5m['SMA5'].shift(1)
-            
-            df_5m['RSI14'] = ta.momentum.rsi(df_5m['close'], window=14)
-            
-            bb = ta.volatility.BollingerBands(df_5m['close'], window=20, window_dev=2.0)
-            df_5m['BB_L'] = bb.bollinger_lband()
-            
-            df_5m['VOL_MA5'] = df_5m['volume'].rolling(5).mean()
-            
-            # 15분봉 지표 (추세 필터용)
-            df_15m['EMA50'] = ta.trend.ema_indicator(df_15m['close'], window=50)
-            
-            logger.debug("기술적 지표 계산 완료")
-            
-        except Exception as e:
-            logger.error(f"기술적 지표 계산 중 오류 발생: {str(e)}")
-            raise
-
-    def check_buy_conditions(self, df_5m: pd.DataFrame, df_15m: pd.DataFrame, config: dict) -> Tuple[bool, Dict]:
-        """
-        모든 매수 조건을 검증합니다.
-        
-        Args:
-            df_5m (pd.DataFrame): 5분봉 데이터프레임
-            df_15m (pd.DataFrame): 15분봉 데이터프레임
-            config (dict): 설정값
-            
-        Returns:
-            Tuple[bool, Dict]: (매수 조건 충족 여부, 각 조건별 상태)
-        """
-        try:
-            # 조건 상태를 저장할 딕셔너리
-            conditions = {
-                'trend_filter': False,
-                'golden_cross': False,
-                'slope': 0.0,
-                'rsi_oversold': False,
-                'bollinger_break': False,
-                'volume_surge': False,
-                'values': {}  # 지표값을 저장할 딕셔너리
+            endpoint = '/v1/trades/ticks'
+            params = {
+                'market': market,
+                'count': count
             }
-            
-            # 1. 15분봉 EMA 50 기반 추세 필터
-            conditions['trend_filter'] = bool(self.check_trend_filter(df_15m))
-            conditions['values']['ema50'] = float(df_15m['EMA50'].iloc[-1]) if not df_15m.empty and 'EMA50' in df_15m else None
-            
-            # 2. 5분봉 골든크로스 + 기울기 확인
-            cross, slope = self.check_golden_cross(df_5m)
-            conditions['golden_cross'] = bool(cross)
-            conditions['slope'] = float(slope)
-            conditions['values']['sma5'] = float(df_5m['SMA5'].iloc[-1]) if not df_5m.empty and 'SMA5' in df_5m else None
-            conditions['values']['sma20'] = float(df_5m['SMA20'].iloc[-1]) if not df_5m.empty and 'SMA20' in df_5m else None
-            conditions['values']['slope'] = float(slope)
-            
-            # 3. RSI 과매도 확인
-            conditions['rsi_oversold'] = bool(self.check_rsi_conditions(
-                df_5m, 
-                period=config.get('rsi_period', 14),
-                oversold=config.get('rsi_oversold', 30)
-            ))
-            conditions['values']['rsi'] = float(df_5m['RSI14'].iloc[-1]) if not df_5m.empty and 'RSI14' in df_5m else None
-            
-            # 4. 볼린저 밴드 하단 이탈 확인
-            conditions['bollinger_break'] = bool(self.check_bollinger_conditions(
-                df_5m,
-                period=config.get('bb_period', 20),
-                std_dev=config.get('bb_std_dev', 2.0)
-            ))
-            conditions['values']['bb_lower'] = float(df_5m['BB_L'].iloc[-1]) if not df_5m.empty and 'BB_L' in df_5m else None
-            
-            # 5. 거래량 급증 확인
-            conditions['volume_surge'] = bool(self.check_volume_surge(
-                df_5m,
-                period=config.get('volume_period', 20),
-                surge_ratio=config.get('volume_surge_ratio', 2.0)
-            ))
-            conditions['values']['volume'] = float(df_5m['volume'].iloc[-1]) if not df_5m.empty else None
-            conditions['values']['volume_ma'] = float(df_5m['VOL_MA5'].iloc[-1]) if not df_5m.empty and 'VOL_MA5' in df_5m else None
-            
-            # 모든 조건이 충족되었는지 확인
-            should_buy = all([
-                conditions['trend_filter'],
-                conditions['golden_cross'],
-                conditions['slope'] >= config.get('min_slope', 0.1),
-                conditions['rsi_oversold'],
-                conditions['bollinger_break'],
-                conditions['volume_surge']
-            ])
-            
-            return bool(should_buy), conditions
-            
+            data = self._send_request('GET', endpoint, params)
+            return data if isinstance(data, list) else []
         except Exception as e:
-            logger.error(f"매수 조건 검증 중 오류 발생: {str(e)}")
-            return False, {'trend_filter': False, 'golden_cross': False, 'slope': 0.0, 
-                         'rsi_oversold': False, 'bollinger_break': False, 
-                         'volume_surge': False, 'values': {}}
+            logger.error(f"최근 체결 조회 실패: {str(e)}")
+            return []
 
-    def prepare_dataframe(self, candles: List[Dict]) -> pd.DataFrame:
-        """
-        캔들 데이터를 데이터프레임으로 변환하고 필요한 컬럼을 추가합니다.
-        
-        Args:
-            candles (List[Dict]): API로부터 받은 캔들 데이터
-            
-        Returns:
-            pd.DataFrame: 처리된 데이터프레임
-        """
+    def get_orderbook(self, market: str) -> Optional[Dict]:
+        """호가 정보 조회"""
         try:
-            if not candles:
-                return pd.DataFrame()
-                
-            # 기본 데이터프레임 생성
-            df = pd.DataFrame(candles)
-            
-            # 컬럼명 변경
-            df = df.rename(columns={
-                'trade_price': 'close',
-                'opening_price': 'open',
-                'high_price': 'high',
-                'low_price': 'low',
-                'candle_acc_trade_volume': 'volume',
-                'candle_date_time_kst': 'datetime'
-            })
-            
-            # datetime 컬럼을 인덱스로 설정
-            df['datetime'] = pd.to_datetime(df['datetime'])
-            df = df.set_index('datetime')
-            
-            # 정렬 (오래된 데이터가 먼저 오도록)
-            df = df.sort_index()
-            
-            # 필수 컬럼만 선택
-            df = df[['open', 'high', 'low', 'close', 'volume']]
-            
-            return df
-            
+            data = self._send_request('GET', '/v1/orderbook', {'markets': market})
+            if isinstance(data, list) and data:
+                return data[0]
+            return None
         except Exception as e:
-            logger.error(f"DataFrame 변환 중 오류 발생: {str(e)}")
-            raise
+            logger.error(f"호가 조회 실패: {str(e)}")
+            return None
 
-    def calculate_ema(self, df: pd.DataFrame, period: int = 50) -> pd.Series:
-        """
-        지수이동평균(EMA) 계산
-        
-        Args:
-            df (pd.DataFrame): 캔들 데이터프레임
-            period (int): 기간
-            
-        Returns:
-            pd.Series: EMA 시리즈
-        """
-        return ta.trend.ema_indicator(df['close'], window=period)
-        
-    def calculate_sma_slope(self, df: pd.DataFrame, period: int = 5) -> float:
-        """
-        이동평균선의 기울기 계산
-        
-        Args:
-            df (pd.DataFrame): 캔들 데이터프레임
-            period (int): SMA 기간
-            
-        Returns:
-            float: 기울기 값
-        """
-        sma = df['close'].rolling(window=period).mean()
-        if len(sma) < 2:
-            return 0.0
-            
-        # 최근 2개 값의 기울기 계산
-        y2, y1 = sma.iloc[-1], sma.iloc[-2]
-        return (y2 - y1) / y1  # 변화율로 기울기 표현
-        
-    def check_trend_filter(self, df_15m: pd.DataFrame) -> bool:
-        """
-        15분봉 기준 추세 필터 확인 (EMA 50 기반)
-        
-        Args:
-            df_15m (pd.DataFrame): 15분봉 데이터프레임
-            
-        Returns:
-            bool: 상승 추세 여부
-        """
-        ema50 = self.calculate_ema(df_15m, 50)
-        if len(ema50) < 50:
-            return False
-            
-        # 현재 가격이 50 EMA 위에 있는지 확인
-        return df_15m['close'].iloc[-1] > ema50.iloc[-1]
-        
-    def check_rsi_conditions(self, df: pd.DataFrame, period: int = 14, oversold: float = 30) -> bool:
-        """
-        RSI 과매도 조건 확인 (2캔들 연속)
-        
-        Args:
-            df (pd.DataFrame): 캔들 데이터프레임
-            period (int): RSI 계산 기간
-            oversold (float): 과매도 기준값
-            
-        Returns:
-            bool: 과매도 조건 충족 여부
-        """
-        rsi = ta.momentum.rsi(df['close'], window=period)
-        if len(rsi) < 2:
-            return False
-            
-        # 최근 2개 캔들의 RSI가 모두 과매도 구간인지 확인
-        return (rsi.iloc[-2] <= oversold) and (rsi.iloc[-1] <= oversold)
-        
-    def check_bollinger_conditions(self, df: pd.DataFrame, period: int = 20, std_dev: float = 2.0) -> bool:
-        """
-        볼린저 밴드 하단 이탈 확인
-        
-        Args:
-            df (pd.DataFrame): 캔들 데이터프레임
-            period (int): 볼린저 밴드 기간
-            std_dev (float): 표준편차 승수
-            
-        Returns:
-            bool: 하단 이탈 여부
-        """
-        bb = ta.volatility.BollingerBands(
-            df['close'], 
-            window=period, 
-            window_dev=std_dev
-        )
-        lower_band = bb.bollinger_lband()
-        
-        # 종가가 하단밴드 아래에 있는지 확인
-        return df['close'].iloc[-1] < lower_band.iloc[-1]
-        
-    def check_volume_surge(self, df: pd.DataFrame, period: int = 20, surge_ratio: float = 2.0) -> bool:
-        """
-        거래량 급증 여부 확인
-        
-        Args:
-            df (pd.DataFrame): 캔들 데이터프레임
-            period (int): 이동평균 기간
-            surge_ratio (float): 급증 기준 배수
-            
-        Returns:
-            bool: 거래량 급증 여부
-        """
-        volume_ma = df['volume'].rolling(window=period).mean()
-        if len(volume_ma) < period:
-            return False
+    def calculate_buy_score(self, market: str, df_1m: pd.DataFrame) -> float:
+        """점수 기반 매수 스코어 계산"""
+        conf = self.config.get('buy_score', {})
+        score = 0.0
 
-        # 현재 거래량이 이동평균의 surge_ratio배 이상인지 확인
-        return df['volume'].iloc[-1] >= (volume_ma.iloc[-1] * surge_ratio)
+        # 1. 체결강도
+        if conf.get('strength_weight', 0) > 0:
+            trades = self.get_recent_trades(market, count=100)
+            if trades:
+                buy_vol = sum(t['trade_volume'] for t in trades if t['ask_bid'] == 'BID')
+                sell_vol = sum(t['trade_volume'] for t in trades if t['ask_bid'] == 'ASK')
+                strength = (buy_vol / sell_vol * 100) if sell_vol else 0
+                if strength >= conf.get('strength_threshold', 130):
+                    score += conf['strength_weight']
+
+        # 2. 실시간 거래량 급증
+        if conf.get('volume_spike_weight', 0) > 0 and len(df_1m) > 5:
+            recent_vol = df_1m['volume'].iloc[-1]
+            avg_vol = df_1m['volume'].iloc[-6:-1].mean()
+            if avg_vol and recent_vol >= avg_vol * (conf.get('volume_spike_threshold', 200) / 100):
+                score += conf['volume_spike_weight']
+
+        # 3. 호가 잔량 불균형
+        if conf.get('orderbook_weight', 0) > 0:
+            ob = self.get_orderbook(market)
+            if ob:
+                bid = float(ob.get('total_bid_size', 0))
+                ask = float(ob.get('total_ask_size', 0))
+                if ask and (bid / ask * 100) >= conf.get('orderbook_threshold', 130):
+                    score += conf['orderbook_weight']
+
+        # 4. 단기 등락률
+        if conf.get('momentum_weight', 0) > 0 and len(df_1m) > 4:
+            change = (df_1m['close'].iloc[-1] / df_1m['close'].iloc[-4] - 1) * 100
+            if change >= conf.get('momentum_threshold', 0.3):
+                score += conf['momentum_weight']
+            elif change <= -conf.get('momentum_threshold', 0.3):
+                return 0.0
+
+        # 5. 전고점 근접 여부
+        if conf.get('near_high_weight', 0) > 0:
+            daily = self.get_candles(market, interval='day', count=2)
+            if daily and len(daily) >= 2:
+                prev_high = max(safe_float(daily[-1].get('high_price')), safe_float(daily[-2].get('high_price')))
+                price = df_1m['close'].iloc[-1]
+                if prev_high and abs(price - prev_high) / prev_high <= abs(conf.get('near_high_threshold', -1)) / 100:
+                    score += conf['near_high_weight']
+
+        # 6. 추세 전환 징후
+        if conf.get('trend_reversal_weight', 0) > 0 and len(df_1m) > 16:
+            past_15 = df_1m['close'].iloc[-16]
+            past_5 = df_1m['close'].iloc[-6]
+            current = df_1m['close'].iloc[-1]
+            if past_15 > current and current > past_5:
+                score += conf['trend_reversal_weight']
+
+        # 7. Williams %R
+        if conf.get('williams_weight', 0) > 0 and conf.get('williams_enabled', True) and len(df_1m) >= 14:
+            hh = df_1m['high'].iloc[-14:].max()
+            ll = df_1m['low'].iloc[-14:].min()
+            if hh != ll:
+                wr = (hh - df_1m['close'].iloc[-1]) / (hh - ll) * -100
+                if wr <= -80:
+                    score += conf['williams_weight']
+
+        # 8. Stochastic
+        if conf.get('stochastic_weight', 0) > 0 and conf.get('stochastic_enabled', True) and len(df_1m) >= 14:
+            lowest = df_1m['low'].rolling(14).min()
+            highest = df_1m['high'].rolling(14).max()
+            k = (df_1m['close'] - lowest) / (highest - lowest) * 100
+            d = k.rolling(3).mean()
+            if k.iloc[-1] < 20 and d.iloc[-1] < 20:
+                score += conf['stochastic_weight']
+
+        # 9. MACD
+        if conf.get('macd_weight', 0) > 0 and conf.get('macd_enabled', True):
+            ema12 = df_1m['close'].ewm(span=12).mean()
+            ema26 = df_1m['close'].ewm(span=26).mean()
+            macd = ema12 - ema26
+            signal = macd.ewm(span=9).mean()
+            if macd.iloc[-1] > signal.iloc[-1] and macd.iloc[-2] <= signal.iloc[-2]:
+                score += conf['macd_weight']
+
+        return score
+
 
     def get_buy_settings(self) -> Dict:
         """매수 주문 설정 조회"""
