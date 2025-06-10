@@ -70,16 +70,24 @@
 pip install -r requirements.txt
 ```
 
-2. 설정 파일 구성
+2. 환경 변수 설정
+프로젝트 루트에 `.env` 파일을 생성하고 다음 값을 입력합니다.
+```env
+UPBIT_ACCESS_KEY=your_access_key
+UPBIT_SECRET_KEY=your_secret_key
+```
+실제 키로 교체한 후 저장하세요.
+
+3. 설정 파일 구성
 - `config.json` 파일에서 기본 설정 구성
 - 웹 인터페이스에서 설정 변경 가능
 
-3. 서버 실행
+4. 서버 실행
 ```bash
 python web/app.py
 ```
 
-4. 웹 인터페이스 접속
+5. 웹 인터페이스 접속
 - http://localhost:5000 접속
 - 설정 페이지: http://localhost:5000/settings
 - 설정을 변경하고 저장하면 `config.json` 파일에 기록되어 재시작 후에도 유지됩니다.

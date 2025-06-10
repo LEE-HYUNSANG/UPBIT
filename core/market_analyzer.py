@@ -95,9 +95,9 @@ class MarketAnalyzer:
         # API 키 설정
         self.access_key = os.getenv('UPBIT_ACCESS_KEY')
         self.secret_key = os.getenv('UPBIT_SECRET_KEY')
-        
+
         if not self.access_key or not self.secret_key:
-            raise ValueError("API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+            logger.warning("API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
             
         # 설정 로드
         self.config = self.load_config()
