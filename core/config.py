@@ -127,14 +127,14 @@ class Config:
         "version": "1.0.0",
         "trading": {
             "enabled": True,
-            "investment_amount": 100000,
+            "investment_amount": 200000,
             "max_coins": 5,
             "coin_selection": {
-                "min_price": 100,
+                "min_price": 700,
                 "max_price": 26666,
                 "min_volume_24h": 1400000000,
-                "min_volume_1h": 100000000,
-                "min_tick_ratio": 0.04
+                "min_volume_1h": 10000000,
+                "min_tick_ratio": 0.035
             }
         },
         "signals": {

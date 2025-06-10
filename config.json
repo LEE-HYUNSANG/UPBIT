@@ -2,14 +2,14 @@
     "version": "1.0.0",
     "trading": {
         "enabled": true,
-        "investment_amount": 10000.0,
-        "max_coins": 8,
+        "investment_amount": 200000.0,
+        "max_coins": 5,
         "coin_selection": {
             "min_price": 700.0,
             "max_price": 26666.0,
             "min_volume_24h": 1400000000,
-            "min_volume_1h": 100000000,
-            "min_tick_ratio": 0.04,
+            "min_volume_1h": 10000000,
+            "min_tick_ratio": 0.035,
             "excluded_coins": [
                 "KRW-ETHW",
                 "KRW-ETHF",

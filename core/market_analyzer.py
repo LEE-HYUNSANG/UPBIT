@@ -709,8 +709,8 @@ class MarketAnalyzer:
             min_price = settings.get('min_price', 700)
             max_price = settings.get('max_price', 26666)
             min_volume_24h = settings.get('min_volume_24h', 1400000000)
-            min_volume_1h = settings.get('min_volume_1h', 100000000)
-            min_tick_ratio = settings.get('min_tick_ratio', 0.04)
+            min_volume_1h = settings.get('min_volume_1h', 10000000)
+            min_tick_ratio = settings.get('min_tick_ratio', 0.035)
 
             logger.info(
                 f"코인 선정 기준: 가격 {min_price}~{max_price}원, 24h≥{min_volume_24h}, 1h≥{min_volume_1h}, 틱비율≥{min_tick_ratio}%"

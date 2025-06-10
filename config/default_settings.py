@@ -23,7 +23,7 @@ DEFAULT_SETTINGS = {
     "version": "1.0.0",
     "trading": {
         "enabled": True,
-        "investment_amount": 10000,
+        "investment_amount": 200000,
         "max_coins": 5,
         "coin_selection": DEFAULT_COIN_SELECTION.copy()
     },
