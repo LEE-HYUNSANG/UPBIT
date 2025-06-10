@@ -778,6 +778,12 @@ def send_monitoring_update():
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
             'coins': coin_data
         }, broadcast=True)
+
+        # 모니터링 코인 목록도 함께 전송하여 웹 UI가 즉시 갱신되도록 한다
+        socketio.emit('monitored_coins_update', {
+            'coins': monitored,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }, broadcast=True)
         
     except Exception as e:
         logger.error(f"모니터링 업데이트 중 오류 발생: {str(e)}")
