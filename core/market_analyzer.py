@@ -710,10 +710,16 @@ class MarketAnalyzer:
             logger.info(f"전체 마켓 수: {len(krw_markets)}")
             
             # 마켓 코드 리스트 생성
-            market_codes = ','.join([market['market'] for market in krw_markets])
-            
-            # 현재가 및 거래량 정보 한 번에 조회
-            tickers = self._send_request('GET', '/v1/ticker', {'markets': market_codes})
+            market_codes_list = [market['market'] for market in krw_markets]
+
+            # 현재가 및 거래량 정보 조회 (100개 단위로 분할 요청)
+            tickers = []
+            for i in range(0, len(market_codes_list), 100):
+                batch_codes = ','.join(market_codes_list[i:i+100])
+                batch = self._send_request('GET', '/v1/ticker', {'markets': batch_codes})
+                if batch:
+                    tickers.extend(batch)
+
             if not tickers:
                 logger.error("현재가 정보 조회 실패")
                 return []
