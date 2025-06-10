@@ -26,7 +26,6 @@ class TestSettingsAPI(unittest.TestCase):
     def test_partial_update_with_zero_volume(self):
         partial = {
             'trading': deepcopy(DEFAULT_SETTINGS['trading']),
-            'signals': deepcopy(DEFAULT_SETTINGS['signals']),
             'notifications': deepcopy(DEFAULT_SETTINGS['notifications']),
             'buy_score': deepcopy(DEFAULT_SETTINGS['buy_score']),
             'buy_settings': deepcopy(DEFAULT_SETTINGS['buy_settings']),

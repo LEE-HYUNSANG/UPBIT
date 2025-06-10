@@ -115,8 +115,6 @@ class MarketAnalyzer:
         self.analysis_thread = None
         self.stop_event = threading.Event()
         
-        # 시그널 상태 저장
-        self.signals = {}
         # 거래 중지 등으로 조회 실패한 마켓 기록
         self.invalid_markets = set()
 
@@ -918,7 +916,6 @@ class MarketAnalyzer:
             # 새로운 설정 구성
             new_config = {
                 'trading': self._prepare_trading_settings(settings),
-                'signals': self._prepare_signal_settings(settings),
                 'notifications': self._prepare_notification_settings(settings),
                 'buy_score': settings.get('buy_score', {}),
                 'buy_settings': settings.get('buy_settings', {}),
@@ -952,7 +949,7 @@ class MarketAnalyzer:
         """설정값 유효성 검증"""
         try:
             # 필수 설정 존재 여부 확인
-            required_keys = ['trading', 'signals', 'notifications', 'buy_score']
+            required_keys = ['trading', 'notifications', 'buy_score']
             if not all(key in settings for key in required_keys):
                 logger.error("필수 설정이 누락되었습니다.")
                 return False
@@ -996,35 +993,6 @@ class MarketAnalyzer:
             }
         }
 
-    def _prepare_signal_settings(self, settings: dict) -> dict:
-        """신호 설정 준비"""
-        signals = settings.get('signals', {})
-        return {
-            'buy_conditions': {
-                'enabled': signals['buy_conditions']['enabled'],
-                'bull': self._convert_numeric_values(signals['buy_conditions']['bull']),
-                'range': self._convert_numeric_values(signals['buy_conditions']['range']),
-                'bear': self._convert_numeric_values(signals['buy_conditions']['bear'])
-            },
-            'sell_conditions': {
-                'stop_loss': {
-                    'enabled': signals['sell_conditions']['stop_loss']['enabled'],
-                    'threshold': float(signals['sell_conditions']['stop_loss']['threshold']),
-                    'trailing_stop': float(signals['sell_conditions']['stop_loss']['trailing_stop'])
-                },
-                'take_profit': {
-                    'enabled': signals['sell_conditions']['take_profit']['enabled'],
-                    'threshold': float(signals['sell_conditions']['take_profit']['threshold']),
-                    'trailing_profit': float(signals['sell_conditions']['take_profit']['trailing_profit'])
-                },
-                'dead_cross': {'enabled': signals['sell_conditions']['dead_cross']['enabled']},
-                'rsi': {
-                    'enabled': signals['sell_conditions']['rsi']['enabled'],
-                    'threshold': float(signals['sell_conditions']['rsi']['threshold'])
-                },
-                'bollinger': {'enabled': signals['sell_conditions']['bollinger']['enabled']}
-            }
-        }
 
     def _prepare_notification_settings(self, settings: dict) -> dict:
         """알림 설정 준비"""
@@ -1091,205 +1059,6 @@ class MarketAnalyzer:
         """현재 설정 조회"""
         return self.config 
 
-    def calculate_signals(self, market: str) -> Dict:
-        """매수 신호 계산"""
-        try:
-            # 캔들 데이터 조회
-            candles = self._get_candles(market, interval='minute15', count=30)
-            if not candles:
-                return None
-            
-            df = pd.DataFrame(candles)
-            df['trade_price'] = pd.to_numeric(df['trade_price'])
-            df['candle_acc_trade_volume'] = pd.to_numeric(df['candle_acc_trade_volume'])
-            
-            # 15분 추세
-            trend, trend_value = self._calculate_trend(df)
-            
-            # 골든크로스
-            golden_cross, gc_value = self.check_golden_cross(df)
-            
-            # RSI
-            rsi = self.calculate_rsi(df)
-            rsi_oversold = rsi < 30
-            
-            # 볼린저 밴드
-            bb_break, bb_value = self._check_bollinger_break(df)
-            
-            # 거래량 급증
-            volume_surge, volume_value = self._check_volume_surge(df)
-            
-            signals = {
-                'market': market,
-                'market_name': self._get_korean_name(market),
-                'trend': trend,
-                'trend_value': trend_value,
-                'golden_cross': golden_cross,
-                'gc_value': gc_value,
-                'rsi_oversold': rsi_oversold,
-                'rsi_value': f'{rsi:.1f}',
-                'bb_break': bb_break,
-                'bb_value': bb_value,
-                'volume_surge': volume_surge,
-                'volume_value': volume_value,
-                'status': '모니터링 중',
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            return signals
-            
-        except Exception as e:
-            logger.error(f"신호 계산 중 오류 발생: {str(e)}")
-            return None
-
-    def _calculate_trend(self, df: pd.DataFrame) -> Tuple[bool, str]:
-        """15분 추세 계산"""
-        try:
-            closes = df['trade_price'].values
-            ma5 = pd.Series(closes).rolling(5).mean().values
-            trend = ma5[-1] > ma5[-2]
-            value = f"{((ma5[-1] - ma5[-2]) / ma5[-2] * 100):.2f}%"
-            return trend, value
-        except Exception as e:
-            logger.error(f"추세 계산 중 오류: {str(e)}")
-            return False, "0.00%"
-
-    def check_golden_cross(self, df: pd.DataFrame) -> Tuple[bool, float]:
-        """
-        골든크로스 발생 여부와 단기 이동평균선 기울기 확인
-        
-        Args:
-            df (pd.DataFrame): 캔들 데이터프레임
-            
-        Returns:
-            Tuple[bool, float]: (골든크로스 발생 여부, 단기 이동평균선 기울기)
-        """
-        try:
-            if len(df) < 20:
-                return False, 0.0
-                
-            # 5일선과 20일선 계산
-            df['SMA5'] = df['close'].rolling(window=5).mean()
-            df['SMA20'] = df['close'].rolling(window=20).mean()
-            
-            # 골든크로스 확인 (이전 봉에서는 5이평이 20이평 아래였다가, 현재 봉에서 위로 올라선 경우)
-            cross = (df['SMA5'].iloc[-2] <= df['SMA20'].iloc[-2]) and (df['SMA5'].iloc[-1] > df['SMA20'].iloc[-1])
-            
-            # 5일 이동평균선의 기울기 계산
-            slope = (df['SMA5'].iloc[-1] - df['SMA5'].iloc[-2]) / df['SMA5'].iloc[-2]
-            
-            return cross, slope
-            
-        except Exception as e:
-            logger.error(f"골든크로스 확인 중 오류 발생: {str(e)}")
-            return False, 0.0
-
-    def calculate_rsi(self, candles: List[Dict], period: int = 14) -> Optional[float]:
-        """RSI 계산"""
-        try:
-            if len(candles) < period + 1:
-                return None
-                
-            prices = [float(candle['trade_price']) for candle in candles]
-            deltas = np.diff(prices)
-            
-            # 상승/하락 구분
-            gains = np.where(deltas > 0, deltas, 0)
-            losses = np.where(deltas < 0, -deltas, 0)
-            
-            # 초기 평균 계산
-            avg_gain = np.mean(gains[:period])
-            avg_loss = np.mean(losses[:period])
-            
-            if avg_loss == 0:
-                return 100.0
-                
-            # RSI 계산
-            rs = avg_gain / avg_loss
-            rsi = 100 - (100 / (1 + rs))
-            
-            # 디버깅을 위한 로그 추가
-            logger.debug(f"RSI 계산 결과: {rsi:.2f} (기간: {period})")
-            
-            return rsi
-            
-        except Exception as e:
-            logger.error(f"RSI 계산 중 오류: {str(e)}")
-            return None
-
-    def _check_bollinger_break(self, df: pd.DataFrame) -> Tuple[bool, str]:
-        """볼린저 밴드 돌파 확인"""
-        try:
-            closes = df['trade_price'].values
-            ma20 = pd.Series(closes).rolling(20).mean()
-            std20 = pd.Series(closes).rolling(20).std()
-            lower_band = ma20 - (2 * std20)
-            is_break = closes[-1] < lower_band.iloc[-1]
-            value = f"{((closes[-1] - lower_band.iloc[-1]) / lower_band.iloc[-1] * 100):.2f}%"
-            return is_break, value
-        except Exception as e:
-            logger.error(f"볼린저 밴드 확인 중 오류: {str(e)}")
-            return False, "0.00%"
-
-    def _check_volume_surge(self, df: pd.DataFrame) -> Tuple[bool, str]:
-        """거래량 급증 확인"""
-        try:
-            volumes = df['candle_acc_trade_volume'].values
-            avg_volume = pd.Series(volumes[:-1]).mean()
-            is_surge = volumes[-1] > (avg_volume * 2)
-            value = f"{(volumes[-1] / avg_volume * 100):.2f}%"
-            return is_surge, value
-        except Exception as e:
-            logger.error(f"거래량 확인 중 오류: {str(e)}")
-            return False, "0.00%"
-
-    def _get_candles(self, market: str, interval: str = 'minute5', count: int = 100) -> List[Dict]:
-        """
-        지정된 시장의 캔들 데이터를 가져옵니다.
-        
-        Args:
-            market (str): 시장 코드 (예: KRW-BTC)
-            interval (str): 시간 간격 ('minute5', 'minute15' 등)
-            count (int): 가져올 캔들 수
-            
-        Returns:
-            List[Dict]: 캔들 데이터 리스트
-        """
-        try:
-            endpoint = f'/v1/candles/{interval}'
-            params = {
-                'market': market,
-                'count': min(count, 200)  # API 제한
-            }
-            
-            response = self._send_request('GET', endpoint, params)
-            if not response or not isinstance(response, list):
-                logger.error(f"{market} 캔들 데이터 조회 실패")
-                return []
-                
-            # 현재 진행 중인 봉은 제외
-            current_time = datetime.now()
-            filtered_candles = [
-                candle for candle in response 
-                if datetime.strptime(candle['candle_date_time_kst'], '%Y-%m-%dT%H:%M:%S') < current_time
-            ]
-            
-            return filtered_candles
-            
-        except Exception as e:
-            logger.error(f"{market} 캔들 데이터 조회 중 오류 발생: {str(e)}")
-            return []
-
-    def _get_korean_name(self, market: str) -> str:
-        """마켓 코드의 한글 이름 조회"""
-        try:
-            if not hasattr(self, '_market_info_cache'):
-                response = self._send_request('GET', '/v1/market/all', {'isDetails': 'true'})
-                self._market_info_cache = {item['market']: item['korean_name'] for item in response}
-            return self._market_info_cache.get(market, market)
-        except Exception as e:
-            logger.error(f"마켓 이름 조회 중 오류: {str(e)}")
-            return market
 
     def market_buy(self, market: str) -> Dict:
         """시장가 매수"""

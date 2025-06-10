@@ -19,63 +19,6 @@
             ]
         }
     },
-    "signals": {
-        "enabled": false,
-        "buy_conditions": {
-            "bull": {
-                "rsi": 40,
-                "sigma": 1.8,
-                "vol_prev": 1.5,
-                "vol_ma": 1.2,
-                "slope": 0.12
-            },
-            "range": {
-                "rsi": 35,
-                "sigma": 2.0,
-                "vol_prev": 2.0,
-                "vol_ma": 1.5,
-                "slope": 0.1
-            },
-            "bear": {
-                "rsi": 30,
-                "sigma": 2.2,
-                "vol_prev": 2.5,
-                "vol_ma": 1.8,
-                "slope": 0.08
-            },
-            "enabled": {
-                "trend_filter": true,
-                "bull_filter": false,
-                "golden_cross": true,
-                "rsi": true,
-                "bollinger": true,
-                "volume_surge": true
-            }
-        },
-        "sell_conditions": {
-            "enabled": true,
-            "stop_loss": {
-                "enabled": true,
-                "threshold": -2.5,
-                "trailing_stop": 0.5
-            },
-            "take_profit": {
-                "enabled": true,
-                "threshold": 5.0,
-                "trailing_profit": 1.0
-            },
-            "dead_cross": {
-                "enabled": true
-            },
-            "rsi": {
-                "enabled": true,
-                "threshold": 60
-            },
-            "bollinger": {
-                "enabled": true
-            }
-        }
-    },
     "notifications": {
         "trade": {
             "start": true,
