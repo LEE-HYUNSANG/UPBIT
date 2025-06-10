@@ -19,7 +19,6 @@ from core.market_analyzer import MarketAnalyzer
 from core.config_manager import ConfigManager
 import threading
 import time
-from core.trading_logic import TradingLogic
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 from core.constants import DEFAULT_COIN_SELECTION
 
@@ -82,8 +81,6 @@ bot_status = {
     'monitored_coins': [],
     'last_update': None
 }
-
-trading_logic = None
 
 # 설정 파일 경로
 CONFIG_FILE = 'config.json'

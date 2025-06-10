@@ -250,6 +250,11 @@ class ConfigManager:
                 if new_config['stop_loss'] >= new_config['take_profit']:
                     raise ValueError("손절가가 익절가보다 크거나 같습니다.")
 
+            # RSI 비활성화 시 관련 설정 강제 비활성화
+            if new_config.get('rsi_enabled') is False:
+                new_config['rsi_buy_enabled'] = False
+                new_config['rsi_sell_enabled'] = False
+
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
@@ -272,6 +277,11 @@ class ConfigManager:
                 return src
 
             merged = deep_merge(json.loads(json.dumps(self.config)), nested_config)
+
+            # RSI 비활성화 시 관련 매수/매도 설정도 비활성화
+            if merged.get('rsi_enabled') is False:
+                merged['rsi_buy_enabled'] = False
+                merged['rsi_sell_enabled'] = False
 
             # 평면 구조 값도 병합하여 검증에 사용
             for k, v in new_config.items():
@@ -339,4 +349,3 @@ class ConfigManager:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
                 raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
-
