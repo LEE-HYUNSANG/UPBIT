@@ -84,6 +84,14 @@ python web/app.py
 - 설정 페이지: http://localhost:5000/settings
 - 대시보드: http://localhost:5000/dashboard
 
+## 문제 해결(Troubleshooting)
+
+애플리케이션 실행 시 모듈을 찾을 수 없다는 오류가 발생한다면 의존성 패키지가 설치되지 않은 상태일 수 있습니다. 다음 명령어로 모든 패키지를 설치한 후 다시 실행해 보세요.
+
+```bash
+pip install -r requirements.txt
+```
+
 ## 주의사항
 
 1. 거래 설정
