@@ -128,6 +128,7 @@ const excludedCoinsList = document.getElementById('excluded-coins-list');
 document.addEventListener('DOMContentLoaded', () => {
     // 초기 설정 로드
     loadSettings();
+    loadBuySettings();
 
     // 제외 코인 입력 이벤트
     excludedCoinInput.addEventListener('keypress', (e) => {
@@ -138,7 +139,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 설정값 변경 이벤트 리스너
-    document.querySelectorAll('input').forEach(input => {
+    document.querySelectorAll('input, select').forEach(input => {
         input.addEventListener('change', () => {
             markSettingsAsChanged();
         });
@@ -214,13 +215,26 @@ function markSettingsAsChanged() {
 }
 
 // 설정 로드
+function mergeDeep(target, source) {
+    for (const key in source) {
+        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+            if (!target[key]) target[key] = {};
+            mergeDeep(target[key], source[key]);
+        } else {
+            target[key] = source[key];
+        }
+    }
+    return target;
+}
+
 function loadSettings() {
     fetch('/api/settings')
         .then(response => response.json())
-        .then(settings => {
-            currentSettings = settings;
-            updateFormValues(settings);
-            updateExcludedCoinsList(settings.trading?.coin_selection?.excluded_coins || []);
+        .then(data => {
+            const settings = data.data || data;
+            currentSettings = mergeDeep(JSON.parse(JSON.stringify(recommendedSettings)), settings);
+            updateFormValues(currentSettings);
+            updateExcludedCoinsList(currentSettings.trading?.coin_selection?.excluded_coins || []);
         })
         .catch(error => {
             console.error('설정을 불러오는 중 오류가 발생했습니다:', error);
@@ -326,6 +340,31 @@ function updateFormValues(settings) {
     setValue('buy_score.macd_weight', score.macd_weight);
     document.getElementById('buy_score.macd_enabled').value = String(score.macd_enabled);
     setValue('buy_score.score_threshold', score.score_threshold);
+}
+
+// 매수 주문 설정 로드
+function loadBuySettings() {
+    fetch('/api/buy_settings')
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                updateBuySettingsForm(data.data);
+            }
+        })
+        .catch(() => {
+            showNotification('매수 설정을 불러오는 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+function updateBuySettingsForm(settings) {
+    if (!settings) return;
+    setValue('buy_settings.ENTRY_SIZE_INITIAL', settings.ENTRY_SIZE_INITIAL);
+    setValue('buy_settings.LIMIT_WAIT_SEC_1', settings.LIMIT_WAIT_SEC_1);
+    const first = document.getElementById('buy_settings.1st_Bid_Price');
+    if (first) first.value = settings['1st_Bid_Price'] || 'BID1+';
+    setValue('buy_settings.LIMIT_WAIT_SEC_2', settings.LIMIT_WAIT_SEC_2);
+    const second = document.getElementById('buy_settings.2nd_Bid_Price');
+    if (second) second.value = settings['2nd_Bid_Price'] || 'ASK1';
 }
 
 // 설정 저장
@@ -443,6 +482,27 @@ function saveSettings() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
+            const buySettings = {
+                ENTRY_SIZE_INITIAL: getNumberValue('buy_settings.ENTRY_SIZE_INITIAL'),
+                LIMIT_WAIT_SEC_1: getNumberValue('buy_settings.LIMIT_WAIT_SEC_1'),
+                "1st_Bid_Price": document.getElementById('buy_settings.1st_Bid_Price').value,
+                LIMIT_WAIT_SEC_2: getNumberValue('buy_settings.LIMIT_WAIT_SEC_2'),
+                "2nd_Bid_Price": document.getElementById('buy_settings.2nd_Bid_Price').value
+            };
+            return fetch('/api/buy_settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(buySettings)
+            });
+        } else {
+            throw new Error(data.error || '설정 저장 중 오류가 발생했습니다.');
+        }
+    })
+    .then(res => res ? res.json() : {success: true})
+    .then(result => {
+        if (result.success) {
             showNotification('설정이 저장되었습니다.', 'success');
             currentSettings = settings;
             const saveButton = document.querySelector('button.btn-warning');
@@ -451,7 +511,7 @@ function saveSettings() {
                 saveButton.classList.add('btn-primary');
             }
         } else {
-            showNotification(data.error || '설정 저장 중 오류가 발생했습니다.', 'error');
+            showNotification(result.error || '매수 설정 저장 중 오류가 발생했습니다.', 'error');
         }
     })
     .catch(error => {

@@ -1,6 +1,8 @@
 import time
+import json
 from typing import Dict, List, Optional
 from core.upbit_api import UpbitAPI
+from core.order_manager import OrderManager
 from ..data.market_data import MarketData
 from ..strategies.one_min_strategy import OneMinStrategy
 from ..utils.logger import TradingLogger
@@ -19,15 +21,44 @@ class TradingBot:
         
         # 거래소 인스턴스 초기화
         self.exchange = UpbitAPI(access_key, secret_key)
-        
+
+        # 주문 관리자 초기화
+        self.order_manager = OrderManager(self.exchange)
+
         # 데이터 관리자 초기화
         self.market_data = MarketData(self.exchange, settings)
-        
+
         # 전략 초기화
         self.strategy = OneMinStrategy(settings, self.exchange)
-        
+
+        # 매수 설정 로드
+        try:
+            with open("config/buy_settings.json", "r", encoding="utf-8") as f:
+                self.buy_settings = json.load(f)
+        except Exception:
+            self.buy_settings = {}
+
         # 실행 상태
         self.is_running = False
+
+    def _get_tick_size(self, price: float) -> float:
+        if price < 10:
+            return 0.01
+        if price < 100:
+            return 0.1
+        if price < 1000:
+            return 1
+        if price < 10000:
+            return 5
+        if price < 100000:
+            return 10
+        if price < 500000:
+            return 50
+        if price < 1000000:
+            return 100
+        if price < 2000000:
+            return 500
+        return 1000
         
     def start(self) -> None:
         """트레이딩 봇 시작"""
@@ -65,36 +96,16 @@ class TradingBot:
                 
             # 시장 데이터 업데이트
             self.market_data.update_market_data(tradable_symbols)
-            
-            # 보유 중인 코인 매도 신호 체크
-            self._check_sell_signals()
-            
+
+            # 기존 매도 주문 상태 확인
+            self._update_sell_orders()
+
             # 새로운 매수 기회 탐색
             self._check_buy_signals(tradable_symbols)
             
         except Exception as e:
             self.logger.error(f"트레이딩 사이클 실행 실패: {str(e)}")
             
-    def _check_sell_signals(self) -> None:
-        """보유 중인 코인의 매도 신호 확인"""
-        for symbol in list(self.strategy.positions.keys()):
-            try:
-                df_1m = self.market_data.get_data(symbol, "1m")
-                if df_1m is None or df_1m.empty:
-                    continue
-                    
-                # 매도 신호 확인
-                if self.strategy.check_sell_signal(symbol, df_1m):
-                    position = self.strategy.positions[symbol]
-                    
-                    # 시장가 매도 실행
-                    order = self.exchange.sell_market_order(symbol, position['amount'])
-                    if order:
-                        self.strategy.remove_position(symbol)
-                        self.logger.info(f"{symbol} 매도 완료")
-                        
-            except Exception as e:
-                self.logger.error(f"{symbol} 매도 신호 확인 실패: {str(e)}")
                 
     def _check_buy_signals(self, symbols: List[str]) -> None:
         """새로운 매수 기회 탐색"""
@@ -124,26 +135,34 @@ class TradingBot:
                     
                 # 매수 신호 확인
                 if self.strategy.check_buy_signal(symbol, df_1m, df_15m):
-                    # 시장가 매수 실행
-                    order = self.exchange.buy_market_order(symbol, investment_amount)
-                    if order:
-                        # 체결 정보 조회
-                        time.sleep(1)  # 체결 대기
-                        order_info = self.exchange.get_order_info(order['uuid'])
-                        if order_info and order_info['state'] == 'done':
-                            executed_volume = float(order_info['executed_volume'])
+                    success, order_info = self.order_manager.buy_with_settings(symbol, self.buy_settings)
+                    if success and order_info:
+                        executed_volume = float(order_info.get('executed_volume', 0))
+                        if executed_volume:
                             avg_price = float(order_info['price']) / executed_volume
-                            
-                            # 포지션 정보 업데이트
                             self.strategy.update_position(symbol, avg_price, executed_volume)
                             self.logger.info(f"{symbol} 매수 완료")
-                            
-                            # 최대 보유 코인 수 도달 시 종료
+
                             if len(self.strategy.positions) >= self.settings['trading']['max_coins']:
                                 break
-                                
+
             except Exception as e:
                 self.logger.error(f"{symbol} 매수 신호 확인 실패: {str(e)}")
+
+    def _update_sell_orders(self) -> None:
+        """선매도 주문 상태 확인 및 포지션 정리"""
+        for symbol in list(self.strategy.positions.keys()):
+            pos = self.strategy.positions[symbol]
+            uuid = pos.get('sell_order_uuid')
+            if not uuid:
+                continue
+            try:
+                order = self.exchange.get_order_info(uuid)
+                if order and order.get('state') == 'done':
+                    self.strategy.remove_position(symbol)
+                    self.logger.info(f"{symbol} 매도 완료")
+            except Exception as e:
+                self.logger.error(f"{symbol} 매도 주문 상태 확인 실패: {str(e)}")
                 
     def get_trading_status(self) -> Dict:
         """

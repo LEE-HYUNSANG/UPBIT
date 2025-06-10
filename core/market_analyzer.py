@@ -38,11 +38,19 @@ import threading
 import time
 from collections import deque
 from functools import wraps
+from config.default_settings import DEFAULT_SETTINGS
 import ta
 
 # 환경변수 로드
 load_dotenv()
 logger = logging.getLogger(__name__)
+
+def safe_float(value: Any, default: float = 0.0) -> float:
+    """Safely convert a value to float, returning a default for None or invalid values."""
+    try:
+        return float(value) if value is not None else default
+    except (ValueError, TypeError):
+        return default
 
 def rate_limit(seconds: int = 1):
     """API 호출 레이트 리미팅을 위한 데코레이터"""
@@ -70,6 +78,7 @@ class MarketAnalyzer:
     def __init__(self, config_path: str = 'config.json'):
         """초기화"""
         self.config_path = config_path
+        self.buy_settings_path = str(Path(__file__).parent.parent / 'config' / 'buy_settings.json')
         self.server_url = 'https://api.upbit.com'
         self.request_timeout = 10
         self.cache_duration = 900
@@ -229,7 +238,12 @@ class MarketAnalyzer:
                 
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                
+
+            if 'buy_score' not in config:
+                config['buy_score'] = DEFAULT_SETTINGS.get('buy_score', {}).copy()
+                with open(self.config_path, 'w', encoding='utf-8') as wf:
+                    json.dump(config, wf, indent=4, ensure_ascii=False)
+
             return config
         except Exception as e:
             logger.error(f"설정 파일 로드 실패: {str(e)}")
@@ -237,30 +251,11 @@ class MarketAnalyzer:
             
     def _create_default_config(self) -> Dict:
         """기본 설정 생성"""
-        config = {
-            'market_analysis': {
-                'thresholds': {
-                    'bull': 0.02,
-                    'bear': -0.02
-                },
-                'weights': {
-                    'trend': 0.3,
-                    'volatility': 0.3,
-                    'volume': 0.2,
-                    'market_dominance': 0.2
-                }
-            },
-            'trade_settings': {
-                'base_amount': 10000,
-                'max_positions': 5,
-                'risk_per_trade': 0.01
-            }
-        }
-        
-        # 설정 파일 저장
+        config = DEFAULT_SETTINGS.copy()
+
         with open(self.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=4)
-            
+            json.dump(config, f, indent=4, ensure_ascii=False)
+
         return config
         
     def _create_auth_token(self, query=None) -> Dict:
@@ -414,7 +409,7 @@ class MarketAnalyzer:
             
             for ticker in tickers:
                 try:
-                    change_rate = float(ticker['signed_change_rate'])
+                    change_rate = safe_float(ticker.get('signed_change_rate'))
                     total_change += change_rate
                     valid_markets += 1
                 except (KeyError, ValueError, TypeError) as e:
@@ -733,8 +728,8 @@ class MarketAnalyzer:
                     if not market:
                         continue
 
-                    current_price = float(ticker['trade_price'])
-                    trade_volume = float(ticker['acc_trade_price_24h'])
+                    current_price = safe_float(ticker.get('trade_price'))
+                    trade_volume = safe_float(ticker.get('acc_trade_price_24h'))
                     if not (min_price <= current_price <= max_price):
                         continue
                     if trade_volume < min_volume_24h:
@@ -743,19 +738,18 @@ class MarketAnalyzer:
                     candles_1h = self.get_candles(market['market'], interval='minute1', count=60)
                     if not candles_1h:
                         continue
-                    avg_volume = sum(float(c['candle_acc_trade_price']) for c in candles_1h) / len(candles_1h)
+                    avg_volume = sum(safe_float(c.get('candle_acc_trade_price')) for c in candles_1h) / len(candles_1h)
                     if avg_volume < min_volume_1h:
                         continue
-                    high_price = max(float(c['high_price']) for c in candles_1h)
-                    low_price = min(float(c['low_price']) for c in candles_1h)
+                    high_price = max(safe_float(c.get('high_price')) for c in candles_1h)
+                    low_price = min(safe_float(c.get('low_price')) for c in candles_1h)
                     if high_price < low_price * 1.002:
                         continue
                     tick_ratio = self._get_tick_size(current_price) / current_price * 100
                     if tick_ratio < min_tick_ratio:
                         continue
 
-                    change_rate_raw = ticker.get('signed_change_rate')
-                    change_rate = 0.0 if change_rate_raw is None else float(change_rate_raw) * 100
+                    change_rate = safe_float(ticker.get('signed_change_rate')) * 100
 
                     market_info.append({
                         'market': market['market'],
@@ -982,6 +976,43 @@ class MarketAnalyzer:
                 'daily_summary': notifications['system']['daily_summary'],
                 'signal': notifications['system']['signal']
             }
+        }
+
+    def _prepare_buy_score_settings(self, settings: dict) -> dict:
+        """매수 점수 설정 준비"""
+        score = settings.get('buy_score', DEFAULT_SETTINGS.get('buy_score', {}))
+
+        def to_int(key, default=0):
+            try:
+                return int(score.get(key, default))
+            except (TypeError, ValueError):
+                return int(default)
+
+        def to_float(key, default=0.0):
+            try:
+                return float(score.get(key, default))
+            except (TypeError, ValueError):
+                return float(default)
+
+        return {
+            'strength_weight': to_int('strength_weight'),
+            'strength_threshold': to_float('strength_threshold'),
+            'volume_spike_weight': to_int('volume_spike_weight'),
+            'volume_spike_threshold': to_float('volume_spike_threshold'),
+            'orderbook_weight': to_int('orderbook_weight'),
+            'orderbook_threshold': to_float('orderbook_threshold'),
+            'momentum_weight': to_int('momentum_weight'),
+            'momentum_threshold': to_float('momentum_threshold'),
+            'near_high_weight': to_int('near_high_weight'),
+            'near_high_threshold': to_float('near_high_threshold'),
+            'trend_reversal_weight': to_int('trend_reversal_weight'),
+            'williams_weight': to_int('williams_weight'),
+            'williams_enabled': bool(score.get('williams_enabled', True)),
+            'stochastic_weight': to_int('stochastic_weight'),
+            'stochastic_enabled': bool(score.get('stochastic_enabled', True)),
+            'macd_weight': to_int('macd_weight'),
+            'macd_enabled': bool(score.get('macd_enabled', True)),
+            'score_threshold': to_float('score_threshold')
         }
 
     def _convert_numeric_values(self, settings: dict) -> dict:
@@ -1593,6 +1624,33 @@ class MarketAnalyzer:
         volume_ma = df['volume'].rolling(window=period).mean()
         if len(volume_ma) < period:
             return False
-            
+
         # 현재 거래량이 이동평균의 surge_ratio배 이상인지 확인
-        return df['volume'].iloc[-1] >= (volume_ma.iloc[-1] * surge_ratio) 
+        return df['volume'].iloc[-1] >= (volume_ma.iloc[-1] * surge_ratio)
+
+    def get_buy_settings(self) -> Dict:
+        """매수 주문 설정 조회"""
+        try:
+            if os.path.exists(self.buy_settings_path):
+                with open(self.buy_settings_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"매수 설정 로드 실패: {e}")
+        return {}
+
+    def save_buy_settings(self, settings: Dict) -> bool:
+        """매수 주문 설정 저장"""
+        try:
+            tmp = self.buy_settings_path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=4, ensure_ascii=False)
+            os.replace(tmp, self.buy_settings_path)
+            return True
+        except Exception as e:
+            logger.error(f"매수 설정 저장 실패: {e}")
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
+            return False
