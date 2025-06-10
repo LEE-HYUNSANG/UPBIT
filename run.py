@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 if __name__ == '__main__':
     try:
         logger.info("웹 서버 시작...")
-        socketio.run(app, debug=True, host='0.0.0.0', port=5000)
+        socketio.run(app, debug=True, host='0.0.0.0', port=5000, use_reloader=False)
     except Exception as e:
         logger.error(f"서버 실행 중 오류 발생: {str(e)}")
 
