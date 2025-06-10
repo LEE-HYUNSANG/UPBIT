@@ -77,6 +77,13 @@ trading_logic = None
 
 # 설정 파일 경로
 CONFIG_FILE = 'config.json'
+SELL_SETTINGS_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                                 'config', 'sell_settings.json')
+
+DEFAULT_SELL_SETTINGS = {
+    "TP_PCT": 0.18,
+    "MINIMUM_TICKS": 2
+}
 
 def load_config():
     """설정 파일 로드"""
@@ -147,6 +154,29 @@ def save_config(config):
     except Exception as e:
         logger.error(f"설정 파일 저장 중 오류 발생: {str(e)}")
         raise
+
+def load_sell_settings():
+    """매도 설정 파일 로드"""
+    try:
+        if os.path.exists(SELL_SETTINGS_FILE):
+            with open(SELL_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        save_sell_settings(DEFAULT_SELL_SETTINGS)
+        return DEFAULT_SELL_SETTINGS
+    except Exception as e:
+        logger.error(f"매도 설정 로드 실패: {str(e)}")
+        return DEFAULT_SELL_SETTINGS
+
+def save_sell_settings(settings):
+    """매도 설정 파일 저장"""
+    try:
+        os.makedirs(os.path.dirname(SELL_SETTINGS_FILE), exist_ok=True)
+        with open(SELL_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=4, ensure_ascii=False)
+        return True
+    except Exception as e:
+        logger.error(f"매도 설정 저장 실패: {str(e)}")
+        return False
 
 def get_default_config():
     """기본 설정값 반환"""
@@ -483,6 +513,44 @@ def save_settings():
             'success': False,
             'error': str(e)
         }), 500
+
+@app.route('/api/sell-settings', methods=['GET'])
+def get_sell_settings():
+    """매도 설정 조회"""
+    try:
+        settings = load_sell_settings()
+        return jsonify({'success': True, 'data': settings})
+    except Exception as e:
+        logger.error(f"매도 설정 조회 실패: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/sell-settings', methods=['POST'])
+def save_sell_settings_api():
+    """매도 설정 저장"""
+    try:
+        settings = request.json or {}
+        tp = float(settings.get('TP_PCT', DEFAULT_SELL_SETTINGS['TP_PCT']))
+        ticks = int(settings.get('MINIMUM_TICKS', DEFAULT_SELL_SETTINGS['MINIMUM_TICKS']))
+        saved = save_sell_settings({'TP_PCT': tp, 'MINIMUM_TICKS': ticks})
+        if saved:
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '저장 실패'}), 500
+    except Exception as e:
+        logger.error(f"매도 설정 저장 실패: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/sell-settings/reset', methods=['POST'])
+def reset_sell_settings_api():
+    """매도 설정 초기화"""
+    try:
+        if save_sell_settings(DEFAULT_SELL_SETTINGS):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '초기화 실패'}), 500
+    except Exception as e:
+        logger.error(f"매도 설정 초기화 실패: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
 
 @app.route('/api/holdings', methods=['GET'])
 def get_holdings():

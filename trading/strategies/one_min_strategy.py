@@ -116,64 +116,6 @@ class OneMinStrategy:
 
         return score
     
-    def check_sell_signal(self, symbol: str, df_1m: pd.DataFrame) -> bool:
-        """매도 신호 확인"""
-        if symbol not in self.positions:
-            return False
-            
-        position = self.positions[symbol]
-        current_price = df_1m['close'].iloc[-1]
-        highest_price = max(position['highest_price'], current_price)
-        self.positions[symbol]['highest_price'] = highest_price
-        
-        # 1. 손절매
-        if self.settings['signals']['sell_conditions']['stop_loss']['enabled']:
-            stop_price = position['entry_price'] * (1 - abs(self.settings['signals']['sell_conditions']['stop_loss']['threshold']) / 100)
-            trail_price = highest_price * (1 - abs(self.settings['signals']['sell_conditions']['stop_loss']['trailing_stop']) / 100)
-            
-            if current_price <= stop_price or current_price <= trail_price:
-                self.logger.info(f"{symbol} 손절매 신호 발생")
-                return True
-        
-        # 2. 익절
-        if self.settings['signals']['sell_conditions']['take_profit']['enabled']:
-            target_price = position['entry_price'] * (1 + self.settings['signals']['sell_conditions']['take_profit']['threshold'] / 100)
-            tp_trail_price = highest_price * (1 - abs(self.settings['signals']['sell_conditions']['take_profit']['trailing_profit']) / 100)
-            
-            if current_price >= target_price or current_price <= tp_trail_price:
-                self.logger.info(f"{symbol} 익절 신호 발생")
-                return True
-        
-        # 3. 데드크로스
-        if self.settings['signals']['sell_conditions']['dead_cross']['enabled']:
-            sma5 = calculate_sma(df_1m['close'], 5)
-            sma20 = calculate_sma(df_1m['close'], 20)
-            slope = calculate_slope(sma5)
-            
-            if (sma5.iloc[-2] >= sma20.iloc[-2] and 
-                sma5.iloc[-1] < sma20.iloc[-1] and 
-                slope <= -0.1):
-                self.logger.info(f"{symbol} 데드크로스 신호 발생")
-                return True
-        
-        # 4. RSI 과매수
-        if self.settings['signals']['sell_conditions']['rsi']['enabled']:
-            rsi = calculate_rsi(df_1m['close'], 14)
-            threshold = self.settings['signals']['sell_conditions']['rsi']['threshold']
-            
-            if rsi.iloc[-1] >= threshold and rsi.iloc[-2] >= threshold:
-                self.logger.info(f"{symbol} RSI 과매수 신호 발생")
-                return True
-        
-        # 5. 볼린저 밴드 상단 돌파
-        if self.settings['signals']['sell_conditions']['bollinger']['enabled']:
-            upper, _, _ = calculate_bollinger_bands(df_1m['close'], 20, 2.0)
-
-            if df_1m['close'].iloc[-1] > upper.iloc[-1]:
-                self.logger.info(f"{symbol} 볼린저 밴드 상단 돌파 신호 발생")
-                return True
-        
-        return False
     
     def _determine_market_condition(self, df_15m: pd.DataFrame) -> str:
         """시장 상황 판단 (상승장/박스장/하락장)"""
@@ -189,12 +131,15 @@ class OneMinStrategy:
         else:
             return 'range'  # 박스장
     
-    def update_position(self, symbol: str, entry_price: float, amount: float):
+    def update_position(self, symbol: str, entry_price: float, amount: float,
+                        sell_order_uuid: str, target_price: float):
         """포지션 정보 업데이트"""
         self.positions[symbol] = {
             'entry_price': entry_price,
             'amount': amount,
-            'highest_price': entry_price
+            'highest_price': entry_price,
+            'sell_order_uuid': sell_order_uuid,
+            'target_price': target_price,
         }
     
     def remove_position(self, symbol: str):

@@ -9,6 +9,7 @@ const alertMessage = document.getElementById('alertMessage');
 
 let excludedCoins = [];
 let currentSettings = {};
+let currentSellSettings = {};
 
 // 추천 설정값
 const recommendedSettings = {
@@ -24,8 +25,7 @@ const recommendedSettings = {
             min_volume_1h: 100000000,
             min_tick_ratio: 0.04,
             excluded_coins: [],
-            buy_price_type: 'best_bid',    // 매수가 설정 (best_bid/best_bid+1/best_ask)
-            sell_price_type: 'best_ask'    // 매도가 설정 (best_ask/best_ask-1/best_bid)
+            buy_price_type: 'best_bid'    // 매수가 설정 (best_bid/best_bid+1/best_ask)
         }
     },
     signals: {
@@ -144,8 +144,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 매수가/매도가 설정 변경 이벤트
-    document.querySelectorAll('input[name="buy_price_type"], input[name="sell_price_type"]').forEach(radio => {
+    // 매수가 설정 변경 이벤트
+    document.querySelectorAll('input[name="buy_price_type"]').forEach(radio => {
         radio.addEventListener('change', () => {
             markSettingsAsChanged();
         });
@@ -221,10 +221,26 @@ function loadSettings() {
             currentSettings = settings;
             updateFormValues(settings);
             updateExcludedCoinsList(settings.trading?.coin_selection?.excluded_coins || []);
+            loadSellSettings();
         })
         .catch(error => {
             console.error('설정을 불러오는 중 오류가 발생했습니다:', error);
             showNotification('설정을 불러오는 중 오류가 발생했습니다.', 'error');
+        });
+}
+
+function loadSellSettings() {
+    fetch('/api/sell-settings')
+        .then(response => response.json())
+        .then(res => {
+            if (res.success) {
+                currentSellSettings = res.data;
+                setValue('sell_settings.TP_PCT', res.data.TP_PCT);
+                setValue('sell_settings.MINIMUM_TICKS', res.data.MINIMUM_TICKS);
+            }
+        })
+        .catch(error => {
+            console.error('매도 설정 로드 오류:', error);
         });
 }
 
@@ -243,9 +259,6 @@ function updateFormValues(settings) {
     const buyPriceType = settings.trading?.buy_price_type || 'best_bid';
     document.querySelector(`input[name="buy_price_type"][value="${buyPriceType}"]`).checked = true;
 
-    // 매도가 설정
-    const sellPriceType = settings.trading?.sell_price_type || 'best_ask';
-    document.querySelector(`input[name="sell_price_type"][value="${sellPriceType}"]`).checked = true;
 
     // 매수 지표 설정
     const buyConditions = settings.signals?.buy_conditions || {};
@@ -278,24 +291,6 @@ function updateFormValues(settings) {
     setValue('signals.buy_conditions.enabled.bollinger', buyConditions.enabled?.bollinger);
     setValue('signals.buy_conditions.enabled.volume_surge', buyConditions.enabled?.volume_surge);
 
-    // 매도 조건 설정
-    const sellConditions = settings.signals?.sell_conditions || {};
-    
-    // 손절매 설정
-    setValue('signals.sell_conditions.stop_loss.enabled', sellConditions.stop_loss?.enabled);
-    setValue('signals.sell_conditions.stop_loss.threshold', sellConditions.stop_loss?.threshold);
-    setValue('signals.sell_conditions.stop_loss.trailing_stop', sellConditions.stop_loss?.trailing_stop);
-    
-    // 익절 설정
-    setValue('signals.sell_conditions.take_profit.enabled', sellConditions.take_profit?.enabled);
-    setValue('signals.sell_conditions.take_profit.threshold', sellConditions.take_profit?.threshold);
-    setValue('signals.sell_conditions.take_profit.trailing_profit', sellConditions.take_profit?.trailing_profit);
-    
-    // 기타 매도 조건
-    setValue('signals.sell_conditions.dead_cross.enabled', sellConditions.dead_cross?.enabled);
-    setValue('signals.sell_conditions.rsi.enabled', sellConditions.rsi?.enabled);
-    setValue('signals.sell_conditions.rsi.threshold', sellConditions.rsi?.threshold);
-    setValue('signals.sell_conditions.bollinger.enabled', sellConditions.bollinger?.enabled);
 
     // 알림 설정
     const notifications = settings.notifications || {};
@@ -341,8 +336,7 @@ function saveSettings() {
                 min_volume_1h: getNumberValue('trading.min_volume_1h'),
                 min_tick_ratio: getNumberValue('trading.min_tick_ratio'),
                 excluded_coins: excludedCoins,
-                buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value,
-                sell_price_type: document.querySelector('input[name="sell_price_type"]:checked').value
+                buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value
             }
         },
         signals: {
@@ -376,28 +370,7 @@ function saveSettings() {
                     volume_surge: getBooleanValue('signals.buy_conditions.enabled.volume_surge')
                 }
             },
-            sell_conditions: {
-                stop_loss: {
-                    enabled: getBooleanValue('signals.sell_conditions.stop_loss.enabled'),
-                    threshold: getNumberValue('signals.sell_conditions.stop_loss.threshold'),
-                    trailing_stop: getNumberValue('signals.sell_conditions.stop_loss.trailing_stop')
-                },
-                take_profit: {
-                    enabled: getBooleanValue('signals.sell_conditions.take_profit.enabled'),
-                    threshold: getNumberValue('signals.sell_conditions.take_profit.threshold'),
-                    trailing_profit: getNumberValue('signals.sell_conditions.take_profit.trailing_profit')
-                },
-                dead_cross: {
-                    enabled: getBooleanValue('signals.sell_conditions.dead_cross.enabled')
-                },
-                rsi: {
-                    enabled: getBooleanValue('signals.sell_conditions.rsi.enabled'),
-                    threshold: getNumberValue('signals.sell_conditions.rsi.threshold')
-                },
-                bollinger: {
-                    enabled: getBooleanValue('signals.sell_conditions.bollinger.enabled')
-                }
-            }
+            sell_conditions: {}
         },
         notifications: {
             trade: {
@@ -433,25 +406,36 @@ function saveSettings() {
         }
     };
 
-    fetch('/api/settings', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(settings)
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
+    const sellSettings = {
+        TP_PCT: getNumberValue('sell_settings.TP_PCT'),
+        MINIMUM_TICKS: getNumberValue('sell_settings.MINIMUM_TICKS')
+    };
+
+    Promise.all([
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        }),
+        fetch('/api/sell-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(sellSettings)
+        })
+    ])
+    .then(responses => Promise.all(responses.map(r => r.json())))
+    .then(([data, sellData]) => {
+        if (data.success && sellData.success) {
             showNotification('설정이 저장되었습니다.', 'success');
             currentSettings = settings;
+            currentSellSettings = sellSettings;
             const saveButton = document.querySelector('button.btn-warning');
             if (saveButton) {
                 saveButton.classList.remove('btn-warning');
                 saveButton.classList.add('btn-primary');
             }
         } else {
-            showNotification(data.error || '설정 저장 중 오류가 발생했습니다.', 'error');
+            showNotification(data.error || sellData.error || '설정 저장 중 오류가 발생했습니다.', 'error');
         }
     })
     .catch(error => {
@@ -463,14 +447,17 @@ function saveSettings() {
 // 설정 초기화
 function resetSettings() {
     if (confirm('모든 설정을 초기화하시겠습니까?')) {
-        fetch('/api/settings/reset', { method: 'POST' })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+        Promise.all([
+            fetch('/api/settings/reset', { method: 'POST' }),
+            fetch('/api/sell-settings/reset', { method: 'POST' })
+        ])
+            .then(responses => Promise.all(responses.map(r => r.json())))
+            .then(([data, sellData]) => {
+                if (data.success && sellData.success) {
                     showNotification('설정이 초기화되었습니다.', 'success');
                     loadSettings();
                 } else {
-                    showNotification(data.error || '설정 초기화 중 오류가 발생했습니다.', 'error');
+                    showNotification(data.error || sellData.error || '설정 초기화 중 오류가 발생했습니다.', 'error');
                 }
             })
             .catch(error => {
