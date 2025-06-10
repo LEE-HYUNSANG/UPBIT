@@ -389,7 +389,16 @@ class MarketAnalyzer:
                 return 'NEUTRAL', 0.5
                 
             # KRW 마켓만 필터링
-            krw_markets = [item['market'] for item in markets if item['market'].startswith('KRW-')]
+            excluded = set(
+                self.config.get('trading', {})
+                .get('coin_selection', {})
+                .get('excluded_coins', [])
+            )
+            krw_markets = [
+                item['market']
+                for item in markets
+                if item['market'].startswith('KRW-') and item['market'] not in excluded
+            ]
             if not krw_markets:
                 return 'NEUTRAL', 0.5
                 
@@ -705,8 +714,17 @@ class MarketAnalyzer:
                 logger.error("마켓 정보 조회 실패")
                 return []
             
-            # KRW 마켓만 필터링
-            krw_markets = [item for item in markets if item['market'].startswith('KRW-')]
+            # KRW 마켓만 필터링하며 제외 코인은 제거
+            excluded = set(
+                self.config.get('trading', {})
+                .get('coin_selection', {})
+                .get('excluded_coins', [])
+            )
+            krw_markets = [
+                item
+                for item in markets
+                if item['market'].startswith('KRW-') and item['market'] not in excluded
+            ]
             logger.info(f"전체 마켓 수: {len(krw_markets)}")
             
             # 마켓 코드 리스트 생성
