@@ -863,7 +863,8 @@ class MarketAnalyzer:
             new_config = {
                 'trading': self._prepare_trading_settings(settings),
                 'signals': self._prepare_signal_settings(settings),
-                'notifications': self._prepare_notification_settings(settings)
+                'notifications': self._prepare_notification_settings(settings),
+                'buy_score': settings.get('buy_score', {})
             }
 
             # 임시 파일에 저장
@@ -893,7 +894,7 @@ class MarketAnalyzer:
         """설정값 유효성 검증"""
         try:
             # 필수 설정 존재 여부 확인
-            required_keys = ['trading', 'signals', 'notifications']
+            required_keys = ['trading', 'signals', 'notifications', 'buy_score']
             if not all(key in settings for key in required_keys):
                 logger.error("필수 설정이 누락되었습니다.")
                 return False
