@@ -34,12 +34,15 @@ app = Flask(__name__,
 app.config['SECRET_KEY'] = 'secret!'
 
 # Socket.IO 초기화
+# eventlet을 사용하여 안정적인 웹소켓 통신을 보장한다
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="threading",  # eventlet을 사용하지 않음
+    async_mode="eventlet",  # 웹소켓 지원을 위해 eventlet 사용
     logger=True,
-    engineio_logger=True
+    engineio_logger=True,
+    ping_timeout=60,   # 기본값보다 넉넉하게 설정하여 타임아웃 방지
+    ping_interval=60
 )
 
 # 로깅 설정
@@ -455,6 +458,9 @@ def update_holdings():
                 'holdings': holdings,
                 'timestamp': datetime.now().isoformat()
             })
+            # 잔고 정보도 함께 전송
+            balance = market_analyzer.get_balance()
+            socketio.emit('balance_update', balance)
             logger.info("보유 코인 정보 업데이트 완료")
     except Exception as e:
         logger.error(f"보유 코인 정보 업데이트 실패: {str(e)}")
@@ -501,13 +507,16 @@ def monitor_market():
                 if holdings is None:
                     holdings = {}
                 bot_status['holdings'] = holdings
-                
+
                 # 클라이언트에 업데이트 전송
                 socketio.emit('holdings_update', {
                     'holdings': list(holdings.values()),
                     'timestamp': datetime.now().isoformat()
                 })
-                
+                # 잔고 정보 전송
+                balance = market_analyzer.get_balance()
+                socketio.emit('balance_update', balance)
+
                 socketio.sleep(market_analyzer.update_interval)  # 1분 대기
             else:
                 # 중지 상태일 때는 모니터링 코인만 업데이트 (10초 주기)
@@ -601,6 +610,8 @@ def handle_start_bot():
                 socketio.emit('holdings_update', {
                     'holdings': list(holdings.values())
                 }, broadcast=True)
+            balance = market_analyzer.get_balance()
+            socketio.emit('balance_update', balance, broadcast=True)
         else:
             emit('notification', {
                 'type': 'error',
@@ -719,6 +730,9 @@ def handle_initial_data():
         emit('holdings_update', {
             'holdings': list(holdings.values()) if holdings else []
         })
+        # 계좌 잔고 정보 전송
+        balance = market_analyzer.get_balance()
+        emit('balance_update', balance)
         
         # 모니터링 중인 코인 정보
         monitored_coins = market_analyzer.get_monitored_coins()
@@ -749,7 +763,8 @@ def handle_initial_data():
 def send_holdings_update():
     holdings = market_analyzer.get_holdings()
     balance = market_analyzer.get_balance()
-    emit('holdings_update', {'holdings': holdings, 'balance': balance})
+    emit('holdings_update', {'holdings': holdings})
+    emit('balance_update', balance)
 
 def send_monitoring_update():
     """모니터링 업데이트를 클라이언트에 전송"""
@@ -816,11 +831,11 @@ def background_updates():
 
 @socketio.on('market_buy')
 def handle_market_buy(data):
-    """개별 코인 시장가 매수"""
+    """개별 코인 매수 (설정 기반)"""
     try:
         market = data['market']
         logger.info(f"코인 매수 요청: {market}")
-        result = market_analyzer.market_buy(market)
+        result = market_analyzer.buy_with_settings(market)
 
         if result['success']:
             emit('market_buy_result', {
@@ -831,6 +846,8 @@ def handle_market_buy(data):
             # 보유 코인 정보 업데이트
             holdings = market_analyzer.get_holdings()
             emit('holdings_update', {'holdings': list(holdings.values())})
+            balance = market_analyzer.get_balance()
+            emit('balance_update', balance)
         else:
             emit('market_buy_result', {
                 'success': False,
@@ -854,6 +871,8 @@ def handle_sell_coin(data):
             # 보유 코인 정보 업데이트
             holdings = market_analyzer.get_holdings()
             emit('holdings_update', {'holdings': holdings})
+            balance = market_analyzer.get_balance()
+            emit('balance_update', balance)
         else:
             emit('error', {'message': f"매도 실패: {result['error']}"})
     except Exception as e:
@@ -873,6 +892,8 @@ def handle_sell_all_coins():
             # 보유 코인 정보 업데이트
             holdings = market_analyzer.get_holdings()
             emit('holdings_update', {'holdings': holdings})
+            balance = market_analyzer.get_balance()
+            emit('balance_update', balance)
         else:
             emit('error', {'message': f"매도 실패: {result['error']}"})
     except Exception as e:

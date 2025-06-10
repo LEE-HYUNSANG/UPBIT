@@ -5,7 +5,8 @@ from datetime import datetime
 
 def setup_logging():
     # 로그 디렉토리 생성
-    log_dir = 'logs'
+    base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    log_dir = os.path.join(base_dir, 'logs')
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
 
@@ -42,8 +43,10 @@ def setup_logging():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-    # suppress werkzeug request logs
+    # suppress noisy library logs
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    logging.getLogger('engineio').setLevel(logging.WARNING)
+    logging.getLogger('socketio').setLevel(logging.WARNING)
 
     # 시작 로그
     logger.info('='*80)

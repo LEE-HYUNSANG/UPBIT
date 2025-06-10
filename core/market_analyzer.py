@@ -38,7 +38,9 @@ import threading
 import time
 from collections import deque
 from functools import wraps
-from config.default_settings import DEFAULT_SETTINGS
+from config.default_settings import DEFAULT_SETTINGS, DEFAULT_BUY_SETTINGS
+from .order_manager import OrderManager
+from .upbit_api import UpbitAPI
 
 # 환경변수 로드
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
@@ -98,6 +100,10 @@ class MarketAnalyzer:
 
         if not self.access_key or not self.secret_key:
             logger.warning("API 키가 설정되지 않았습니다. .env 파일을 확인해주세요.")
+        
+        # Upbit API 및 주문 관리자 초기화
+        self.api = UpbitAPI(self.access_key, self.secret_key)
+        self.order_manager = OrderManager(self.api)
             
         # 설정 로드
         self.config = self.load_config()
@@ -111,6 +117,8 @@ class MarketAnalyzer:
         
         # 시그널 상태 저장
         self.signals = {}
+        # 거래 중지 등으로 조회 실패한 마켓 기록
+        self.invalid_markets = set()
 
     def register_socketio(self, socketio):
         """웹소켓 이벤트 핸들러 등록"""
@@ -347,6 +355,21 @@ class MarketAnalyzer:
             return response.json()
             
         except requests.exceptions.HTTPError as e:
+            if (
+                e.response is not None
+                and e.response.status_code == 404
+                and "Code not found" in e.response.text
+            ):
+                markets_param = None
+                if isinstance(params, dict):
+                    markets_param = params.get("markets")
+                if markets_param:
+                    for m in str(markets_param).split(','):
+                        self.invalid_markets.add(m.strip())
+                logger.warning(
+                    f"존재하지 않는 마켓 요청: {markets_param} (endpoint={endpoint})"
+                )
+                return None
             logger.error(
                 f"API HTTP 오류: {e.response.status_code} - {e.response.text} "
                 f"(endpoint={endpoint}, params={params})"
@@ -362,10 +385,15 @@ class MarketAnalyzer:
     def get_market_info(self, market: str) -> Dict:
         """시장 정보 조회"""
         try:
+            if market in self.invalid_markets:
+                return None
+
             params = {'markets': market}
             data = self._send_request('GET', '/v1/ticker', params)
             if isinstance(data, list) and len(data) > 0:
                 return data[0]
+            if data is None:
+                self.invalid_markets.add(market)
             return None
         except Exception as e:
             logger.error(f"시장 정보 조회 실패: {str(e)}")
@@ -514,6 +542,8 @@ class MarketAnalyzer:
             for account in accounts:
                 if account['currency'] != 'KRW' and float(account['balance']) > 0:
                     market = f"KRW-{account['currency']}"
+                    if market in self.invalid_markets:
+                        continue
                     # 현재가 조회
                     ticker = self.get_market_info(market)
                     if ticker:
@@ -558,6 +588,8 @@ class MarketAnalyzer:
                     krw_balance = float(account['balance'])
                 else:
                     market = f"KRW-{account['currency']}"
+                    if market in self.invalid_markets:
+                        continue
                     ticker = self.get_market_info(market)
                     if ticker:
                         balance = float(account['balance'])
@@ -1291,10 +1323,32 @@ class MarketAnalyzer:
             else:
                 error_msg = f"{market} 매수 주문 실패"
                 logger.error(error_msg)
-                return {'success': False, 'error': error_msg}
-                
+            return {'success': False, 'error': error_msg}
+
         except Exception as e:
             error_msg = f"시장가 매수 중 오류 발생: {str(e)}"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+
+    def buy_with_settings(self, market: str) -> Dict:
+        """설정 기반 지정가 매수"""
+        try:
+            settings = self.get_buy_settings() or DEFAULT_BUY_SETTINGS.copy()
+            success, order = self.order_manager.buy_with_settings(market, settings)
+            if success and order:
+                return {
+                    'success': True,
+                    'data': {
+                        'market': market,
+                        'order_type': 'limit_buy',
+                        'order_details': order
+                    }
+                }
+            error_msg = f"{market} 매수 주문 실패"
+            logger.error(error_msg)
+            return {'success': False, 'error': error_msg}
+        except Exception as e:
+            error_msg = f"설정 기반 매수 중 오류 발생: {str(e)}"
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
 
