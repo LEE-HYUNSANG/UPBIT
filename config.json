@@ -2,13 +2,13 @@
     "version": "1.0.0",
     "trading": {
         "enabled": true,
-        "investment_amount": 200000.0,
+        "investment_amount": 200000,
         "max_coins": 5,
         "coin_selection": {
-            "min_price": 700.0,
-            "max_price": 26666.0,
+            "min_price": 700,
+            "max_price": 26666,
             "min_volume_24h": 1400000000,
-            "min_volume_1h": 10000000,
+            "min_volume_1h": 0,
             "min_tick_ratio": 0.035,
             "excluded_coins": [
                 "KRW-ETHW",
@@ -20,51 +20,43 @@
         }
     },
     "signals": {
-        "enabled": true,
-        "common_conditions": {
-            "enabled": true,
-            "rsi": {
-                "enabled": true,
-                "period": 14
-            },
-            "bollinger": {
-                "enabled": true,
-                "period": 20,
-                "k": 2.0
-            },
-            "volume_ma": {
-                "enabled": true,
-                "period": 5
-            }
-        },
+        "enabled": false,
         "buy_conditions": {
-            "enabled": true,
-            "rsi": {
-                "enabled": true,
-                "threshold": 35.0
+            "bull": {
+                "rsi": 40,
+                "sigma": 1.8,
+                "vol_prev": 1.5,
+                "vol_ma": 1.2,
+                "slope": 0.12
             },
-            "golden_cross": {
-                "enabled": true,
-                "short_period": 5,
-                "long_period": 20
+            "range": {
+                "rsi": 35,
+                "sigma": 2.0,
+                "vol_prev": 2.0,
+                "vol_ma": 1.5,
+                "slope": 0.1
             },
-            "bollinger": {
-                "enabled": true,
-                "threshold": -2.0
+            "bear": {
+                "rsi": 30,
+                "sigma": 2.2,
+                "vol_prev": 2.5,
+                "vol_ma": 1.8,
+                "slope": 0.08
             },
-            "tf_filter": {
-                "enabled": true
-            },
-            "volume_surge": {
-                "enabled": true,
-                "threshold": 2.0
+            "enabled": {
+                "trend_filter": true,
+                "bull_filter": false,
+                "golden_cross": true,
+                "rsi": true,
+                "bollinger": true,
+                "volume_surge": true
             }
         },
         "sell_conditions": {
             "enabled": true,
             "stop_loss": {
                 "enabled": true,
-                "threshold": -3.0,
+                "threshold": -2.5,
                 "trailing_stop": 0.5
             },
             "take_profit": {
@@ -72,37 +64,36 @@
                 "threshold": 2.0,
                 "trailing_profit": 1.0
             },
+            "dead_cross": {
+                "enabled": true
+            },
             "rsi": {
                 "enabled": true,
-                "threshold": 60.0
-            },
-            "dead_cross": {
-                "enabled": true,
-                "short_period": 5,
-                "long_period": 20
+                "threshold": 60
             },
             "bollinger": {
-                "enabled": true,
-                "threshold": 2.0
+                "enabled": true
             }
         }
     },
     "notifications": {
         "trade": {
-            "start": false,
-            "complete": false,
-            "profit_loss": false
+            "start": true,
+            "complete": true,
+            "profit_loss": true
         },
         "system": {
-            "error": false,
-            "daily_summary": false,
-            "signal": false
+            "error": true,
+            "daily_summary": true,
+            "signal": true
         }
     },
     "buy_score": {
         "strength_weight": 2,
+        "strength_threshold_low": 110,
         "strength_threshold": 130,
         "volume_spike_weight": 2,
+        "volume_spike_threshold_low": 150,
         "volume_spike_threshold": 200,
         "orderbook_weight": 1,
         "orderbook_threshold": 130,
