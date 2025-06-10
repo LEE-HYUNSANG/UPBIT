@@ -11,8 +11,10 @@ DEFAULT_SETTINGS = {
         "max_coins": 5,
         "coin_selection": {
             "min_price": 700,
-            "max_price": 23000,
-            "top_volume_count": 20,
+            "max_price": 2666,
+            "min_volume_24h": 1400000000,
+            "min_volume_1h": 100000000,
+            "min_tick_ratio": 0.04,
             "excluded_coins": ["KRW-ETHW", "KRW-ETHF", "KRW-XCORE", "KRW-GAS"]
         }
     },

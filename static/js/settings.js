@@ -19,7 +19,9 @@ const recommendedSettings = {
         coin_selection: {
             min_price: 100,         // 최소 100원
             max_price: 500000,      // 최대 50만원
-            top_volume_count: 30,    // 상위 30개 거래량
+            min_volume_24h: 1400000000,
+            min_volume_1h: 100000000,
+            min_tick_ratio: 0.04,
             excluded_coins: [],
             buy_price_type: 'best_bid',    // 매수가 설정 (best_bid/best_bid+1/best_ask)
             sell_price_type: 'best_ask'    // 매도가 설정 (best_ask/best_ask-1/best_bid)
@@ -212,7 +214,9 @@ function updateFormValues(settings) {
     setValue('trading.max_coins', settings.trading?.max_coins);
     setValue('trading.min_price', settings.trading?.coin_selection?.min_price);
     setValue('trading.max_price', settings.trading?.coin_selection?.max_price);
-    setValue('trading.top_volume_count', settings.trading?.coin_selection?.top_volume_count);
+    setValue('trading.min_volume_24h', settings.trading?.coin_selection?.min_volume_24h);
+    setValue('trading.min_volume_1h', settings.trading?.coin_selection?.min_volume_1h);
+    setValue('trading.min_tick_ratio', settings.trading?.coin_selection?.min_tick_ratio);
 
     // 매수가 설정
     const buyPriceType = settings.trading?.buy_price_type || 'best_bid';
@@ -292,7 +296,9 @@ function saveSettings() {
             coin_selection: {
                 min_price: getNumberValue('trading.min_price'),
                 max_price: getNumberValue('trading.max_price'),
-                top_volume_count: getNumberValue('trading.top_volume_count'),
+                min_volume_24h: getNumberValue('trading.min_volume_24h'),
+                min_volume_1h: getNumberValue('trading.min_volume_1h'),
+                min_tick_ratio: getNumberValue('trading.min_tick_ratio'),
                 excluded_coins: excludedCoins,
                 buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value,
                 sell_price_type: document.querySelector('input[name="sell_price_type"]:checked').value
