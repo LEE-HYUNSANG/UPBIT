@@ -299,10 +299,21 @@ class MarketAnalyzer:
         """API 요청 전송 (레이트 리미팅 적용)"""
         try:
             url = f"{self.server_url}{endpoint}"
-            headers = self._create_auth_token(params)
-            
-            if not headers:
-                raise Exception("인증 토큰 생성 실패")
+
+            public_prefixes = (
+                "/v1/market",
+                "/v1/ticker",
+                "/v1/candles",
+                "/v1/orderbook",
+                "/v1/trades",
+            )
+
+            headers = {}
+            if not endpoint.startswith(public_prefixes):
+                headers = self._create_auth_token(params)
+
+                if not headers:
+                    raise Exception("인증 토큰 생성 실패")
                 
             if method == 'GET':
                 # GET 요청의 경우 쿼리 파라미터로 전달
@@ -335,7 +346,10 @@ class MarketAnalyzer:
             return response.json()
             
         except requests.exceptions.HTTPError as e:
-            logger.error(f"API HTTP 오류: {e.response.status_code} - {e.response.text}")
+            logger.error(
+                f"API HTTP 오류: {e.response.status_code} - {e.response.text} "
+                f"(endpoint={endpoint}, params={params})"
+            )
             return None
         except requests.exceptions.RequestException as e:
             logger.error(f"API 요청 실패: {str(e)}")
@@ -731,7 +745,12 @@ class MarketAnalyzer:
             krw_markets = [
                 item
                 for item in markets
-                if item['market'].startswith('KRW-') and item['market'] not in excluded
+                if (
+                    item['market'].startswith('KRW-')
+                    and item['market'] not in excluded
+                    and item.get('market_warning', 'NONE') == 'NONE'
+                    and item.get('market_state', 'ACTIVE').upper() == 'ACTIVE'
+                )
             ]
             logger.info(f"전체 마켓 수: {len(krw_markets)}")
             
