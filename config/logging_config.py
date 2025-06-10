@@ -43,8 +43,10 @@ def setup_logging():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
-    # suppress werkzeug request logs
+    # suppress noisy library logs
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
+    logging.getLogger('engineio').setLevel(logging.WARNING)
+    logging.getLogger('socketio').setLevel(logging.WARNING)
 
     # 시작 로그
     logger.info('='*80)
