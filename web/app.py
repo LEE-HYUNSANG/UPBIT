@@ -449,6 +449,22 @@ def get_holdings():
             'message': str(e)
         }), 400
 
+@app.route('/api/balance', methods=['GET'])
+def get_balance():
+    """계좌 잔고 조회"""
+    try:
+        balance_info = market_analyzer.get_balance()
+        return jsonify({
+            'status': 'success',
+            'data': balance_info
+        })
+    except Exception as e:
+        logger.error(f"계좌 잔고 조회 중 오류 발생: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 400
+
 def update_holdings():
     """보유 코인 정보 업데이트"""
     try:
