@@ -233,12 +233,15 @@ class UpbitAPI:
                 raise ValueError(f'지원하지 않는 주문 타입: {ord_type}')
                 
             headers = self._get_token(data)
-            
+
             if not headers:
                 raise Exception("인증 토큰 생성 실패")
-                
+
+            self.logger.info(f"주문 요청 데이터: {data}")
+
             response = requests.post(url, json=data, headers=headers)
             self.logger.info(f"주문 실행: {response.status_code}")
+            self.logger.info(f"주문 응답: {response.text}")
 
             if not response.ok:
                 try:
