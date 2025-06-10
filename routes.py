@@ -59,18 +59,50 @@ def load_settings():
         print(f"설정 로드 중 오류 발생: {e}")
         return DEFAULT_SETTINGS.copy()
 
+def _diff_settings(old, new, path=""):
+    """재귀적으로 설정 변경 내역을 생성합니다."""
+    changes = []
+    keys = set(old.keys()) | set(new.keys())
+    for key in keys:
+        old_v = old.get(key)
+        new_v = new.get(key)
+        current_path = f"{path}.{key}" if path else key
+        if isinstance(old_v, dict) and isinstance(new_v, dict):
+            changes.extend(_diff_settings(old_v, new_v, current_path))
+        else:
+            if old_v != new_v:
+                changes.append(f"{current_path}: {old_v!r} -> {new_v!r}")
+    return changes
+
+
 def save_settings(settings):
-    """
-    설정을 파일에 저장합니다.
-    저장된 설정은 이후 기본값으로 사용됩니다.
-    """
+    """설정을 파일에 저장하고 변경 사항을 로그로 남깁니다."""
     try:
         os.makedirs(os.path.dirname(SETTINGS_FILE), exist_ok=True)
+
+        # 기존 설정 로드
+        old_settings = {}
+        if os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                old_settings = json.load(f)
+
+        # 변경 사항 계산
+        changes = _diff_settings(old_settings, settings)
+
+        # 설정 저장
         with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
             json.dump(settings, f, ensure_ascii=False, indent=4)
+
+        logger.info(f"설정 파일 저장: {SETTINGS_FILE}")
+        if changes:
+            for c in changes:
+                logger.info(f"변경 사항 - {c}")
+        else:
+            logger.info("변경 사항 없음")
+
         return True
     except Exception as e:
-        print(f"설정 저장 중 오류 발생: {e}")
+        logger.error(f"설정 저장 중 오류 발생: {e}")
         return False
 
 @api.route('/api/settings', methods=['GET'])
