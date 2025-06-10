@@ -14,15 +14,15 @@ let currentSettings = {};
 const recommendedSettings = {
     trading: {
         enabled: false,  // 실제 매매 실행 여부
-        investment_amount: 10000,    // 1만원 단위 테스트 추천
-        max_coins: 8,               // 동시 보유 최대 8개 코인
+        investment_amount: 200000,    // 기본 투자금액
+        max_coins: 5,               // 동시 보유 최대 5개 코인
         coin_selection: {
             // 기본값 업데이트
             min_price: 700,         // 최소 가격 (원)
             max_price: 26666,       // 최대 가격 (원)
             min_volume_24h: 1400000000,
-            min_volume_1h: 100000000,
-            min_tick_ratio: 0.04,
+            min_volume_1h: 10000000,
+            min_tick_ratio: 0.035,
             excluded_coins: []
         }
     },
