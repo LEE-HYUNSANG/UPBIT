@@ -147,10 +147,19 @@ def check_buy_conditions(c1m: dict, c5m: dict = None, config: dict = None) -> Tu
                                  rsi > rsi_prev + 3)  # 과매도에서 반등
     
     # 6. 이동평균선 정배열 체크
-    ema_short = calculate_ema(pd.Series(price_data), config['indicators']['ema']['short_1m']).iloc[-1]
-    ema_mid = calculate_ema(pd.Series(price_data), 15).iloc[-1]  # 15분 EMA 추가
-    ema_long = calculate_ema(pd.Series(price_data), config['indicators']['ema']['long_1m']).iloc[-1]
-    conditions['EMA_ALIGN'] = (ema_short[-1] > ema_mid[-1] > ema_long[-1])
+    ema_short_series = calculate_ema(
+        pd.Series(price_data), config['indicators']['ema']['short_1m']
+    )
+    ema_mid_series = calculate_ema(pd.Series(price_data), 15)  # 15분 EMA 추가
+    ema_long_series = calculate_ema(
+        pd.Series(price_data), config['indicators']['ema']['long_1m']
+    )
+
+    ema_short = float(ema_short_series.iloc[-1])
+    ema_mid = float(ema_mid_series.iloc[-1])
+    ema_long = float(ema_long_series.iloc[-1])
+
+    conditions['EMA_ALIGN'] = ema_short > ema_mid > ema_long
     
     # 7. 볼린저 밴드 하단 반등 체크
     bb_lower = calc_bollinger_bands(price_data, 20)['lower']
