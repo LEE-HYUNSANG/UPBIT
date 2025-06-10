@@ -116,21 +116,6 @@
         .btn-danger {
             border-radius: var(--border-radius);
         }
-
-        .resizable-container {
-            display: flex;
-            width: 100%;
-        }
-
-        .resizable-panel {
-            overflow: auto;
-        }
-
-        .resizer {
-            width: 5px;
-            cursor: ew-resize;
-            background-color: var(--background-color);
-        }
     </style>
 </head>
 <body>
@@ -156,9 +141,9 @@
 
     <div class="container-fluid py-4">
         <!-- 전체 화면을 활용하도록 너비 조정 -->
-        <div id="mainRow" class="row resizable-container" style="width:100%; margin:0 auto;">
+        <div class="row" style="width:100%; margin:0 auto;">
             <!-- 좌측 컨트롤 패널 -->
-            <div id="leftPanel" class="col-md-4 resizable-panel" style="min-width:250px; width:33%;">
+            <div class="col-md-4">
                 <!-- 봇 컨트롤 -->
                 <div class="card">
                     <div class="card-header">
@@ -224,10 +209,9 @@
                     </div>
                 </div>
             </div>
-            <div id="columnResizer" class="resizer"></div>
 
             <!-- 우측 메인 컨텐츠 -->
-            <div id="rightPanel" class="col-md-8 resizable-panel" style="min-width:300px;">
+            <div class="col-md-8">
                 <!-- 보유 코인 -->
                 <div class="card">
                     <div class="card-header">
@@ -542,39 +526,7 @@
 
             // 페이지 로드 시 초기 데이터 요청
             socket.emit('request_initial_data');
-
-            const resizer = document.getElementById('columnResizer');
-            const leftPanel = document.getElementById('leftPanel');
-            const rightPanel = document.getElementById('rightPanel');
-            const container = document.getElementById('mainRow');
-
-            if (resizer && leftPanel && rightPanel && container) {
-                let startX = 0;
-                let startLeftWidth = 0;
-
-                const doDrag = (e) => {
-                    const containerRect = container.getBoundingClientRect();
-                    let newLeftWidth = startLeftWidth + e.clientX - startX;
-                    const minLeftWidth = 200;
-                    const maxLeftWidth = containerRect.width - 200;
-                    newLeftWidth = Math.max(minLeftWidth, Math.min(maxLeftWidth, newLeftWidth));
-                    leftPanel.style.width = newLeftWidth + 'px';
-                    rightPanel.style.width = (containerRect.width - newLeftWidth - resizer.offsetWidth) + 'px';
-                };
-
-                const stopDrag = () => {
-                    document.removeEventListener('mousemove', doDrag);
-                    document.removeEventListener('mouseup', stopDrag);
-                };
-
-                resizer.addEventListener('mousedown', (e) => {
-                    startX = e.clientX;
-                    startLeftWidth = leftPanel.getBoundingClientRect().width;
-                    document.addEventListener('mousemove', doDrag);
-                    document.addEventListener('mouseup', stopDrag);
-                });
-            }
         });
     </script>
 </body>
-</html>
+</html> 
