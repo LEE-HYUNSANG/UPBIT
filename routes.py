@@ -7,7 +7,7 @@ from core.upbit_api import UpbitAPI
 from core.telegram_notifier import TelegramNotifier
 import logging
 import asyncio
-from flask import current_app
+from extensions import socketio
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 
 # 설정 파일 경로
