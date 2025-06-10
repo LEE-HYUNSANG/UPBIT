@@ -356,14 +356,22 @@ class UpbitAPI:
                 orderbook = pyupbit.get_orderbook(ticker=market)
                 if orderbook:
                     return orderbook[0]
+                last_error = ValueError("orderbook empty")
+                self.logger.error(
+                    f"호가 조회 실패: 결과 없음 (attempt {attempt}/{retries})"
+                )
             except Exception as e:
                 last_error = e
-                self.logger.error(f"호가 조회 실패: {str(e)}")
-            time.sleep(delay)
+                self.logger.error(
+                    f"호가 조회 실패: {e!r} (attempt {attempt}/{retries})"
+                )
+
+            if attempt < retries:
+                time.sleep(delay)
 
         if last_error:
             self.logger.error(
-                f"호가 조회 실패: 재시도 {retries}회 후 포기 - {str(last_error)}"
+                f"호가 조회 실패: 재시도 {retries}회 후 포기 - {last_error!r}"
             )
         return None
 

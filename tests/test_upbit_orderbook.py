@@ -10,4 +10,5 @@ class TestUpbitOrderbookRetries(unittest.TestCase):
         result = api.get_orderbook('KRW-BTC', retries=3, delay=0.01)
         self.assertIsNone(result)
         self.assertEqual(mock_get_orderbook.call_count, 3)
-
+        # sleep should be called retries-1 times
+        self.assertEqual(mock_sleep.call_count, 2)
