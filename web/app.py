@@ -475,7 +475,7 @@ def monitor_market():
             socketio.sleep(5)  # 오류 발생 시 5초 대기
 
 @socketio.on('connect')
-def handle_connect():
+def handle_connect(auth=None):
     """소켓 연결 이벤트 핸들러"""
     try:
         logger.info('Client connected')

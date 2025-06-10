@@ -201,7 +201,7 @@ def monitor_market():
 
 # Socket.IO 이벤트 핸들러
 @socketio.on('connect')
-def handle_connect():
+def handle_connect(auth=None):
     """소켓 연결 이벤트 핸들러"""
     try:
         logger.debug('Client connected')
