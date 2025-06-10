@@ -711,17 +711,38 @@ class MarketAnalyzer:
                 if auto_enabled:
                     holdings = self.get_holdings().keys()
                     for coin in monitored_coins:
-                        if coin['score'] >= coin['threshold'] and coin['market'] not in holdings and coin['market'] not in self.auto_bought:
-                            logger.info(f"{coin['market']} 자동 매수 시도 (score={coin['score']:.2f})")
-                            result = self.buy_with_settings(coin['market'])
-                            if result.get('success'):
-                                self.auto_bought.add(coin['market'])
-                                logger.info(f"{coin['market']} 자동 매수 성공")
-                                order = result.get('data', {}).get('order_details')
-                                if order:
-                                    self._place_pre_sell(coin['market'], order)
-                            else:
-                                logger.error(f"{coin['market']} 자동 매수 실패: {result.get('error')}")
+                        if coin['score'] < coin['threshold']:
+                            logger.debug(
+                                f"{coin['market']} 자동 매수 조건 미충족 (score={coin['score']:.2f})"
+                            )
+                            continue
+
+                        if coin['market'] in holdings:
+                            logger.info(
+                                f"{coin['market']} 자동 매수 건너뜀: 이미 보유 중"
+                            )
+                            continue
+
+                        if coin['market'] in self.auto_bought:
+                            logger.info(
+                                f"{coin['market']} 자동 매수 건너뜀: 이미 주문됨"
+                            )
+                            continue
+
+                        logger.info(
+                            f"{coin['market']} 자동 매수 시도 (score={coin['score']:.2f})"
+                        )
+                        result = self.buy_with_settings(coin['market'])
+                        if result.get('success'):
+                            self.auto_bought.add(coin['market'])
+                            logger.info(f"{coin['market']} 자동 매수 성공")
+                            order = result.get('data', {}).get('order_details')
+                            if order:
+                                self._place_pre_sell(coin['market'], order)
+                        else:
+                            logger.error(
+                                f"{coin['market']} 자동 매수 실패: {result.get('error')}"
+                            )
 
                 # 소켓 이벤트로 데이터 전송
                 if self.socketio:
