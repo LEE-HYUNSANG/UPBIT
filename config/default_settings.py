@@ -114,7 +114,7 @@ DEFAULT_SETTINGS = {
             },
             "take_profit": {
                 "enabled": True,
-                "threshold": 2.0,
+                "threshold": 5.0,
                 "trailing_profit": 1.0
             },
             "dead_cross": {
