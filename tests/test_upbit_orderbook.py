@@ -12,4 +12,3 @@ class TestUpbitOrderbookRetries(unittest.TestCase):
         self.assertEqual(mock_get_orderbook.call_count, 3)
         # sleep should be called retries-1 times
         self.assertEqual(mock_sleep.call_count, 2)
-
