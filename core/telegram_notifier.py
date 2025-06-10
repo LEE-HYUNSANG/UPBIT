@@ -95,6 +95,9 @@ class TelegramNotifier:
         """
         self.last_activity = datetime.now()
         self.last_activity_type = activity_type
+        # 활동이 발생하면 하트비트도 함께 갱신하여
+        # 모니터링 루프가 비정상 종료로 오인하지 않도록 한다
+        self.last_heartbeat = datetime.now()
         
     async def _monitor_system_status(self):
         """시스템 상태 주기적 모니터링 (5분 간격)"""
@@ -170,6 +173,10 @@ class TelegramNotifier:
             logger.info(f"텔레그램 메시지 전송 성공: {message[:50]}...")
         except TelegramError as e:
             logger.error(f"텔레그램 메시지 전송 실패: {str(e)}")
+        finally:
+            # 메시지를 전송할 때마다 하트비트를 갱신하여
+            # 주기적인 모니터링에서 정상 동작으로 판단하게 한다
+            self.last_heartbeat = datetime.now()
             
     async def notify_system_start(self):
         """시스템 시작 알림"""
