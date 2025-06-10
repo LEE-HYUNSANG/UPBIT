@@ -20,17 +20,24 @@ class OneMinStrategy:
         self.logger = TradingLogger("OneMinStrategy")
         self.positions: Dict[str, Dict] = {}  # 보유 포지션 정보
         
-    def check_buy_signal(self, symbol: str, df_1m: pd.DataFrame, df_15m: pd.DataFrame) -> bool:
-        """점수 기반 매수 신호 확인"""
+    def check_buy_signal(
+        self, symbol: str, df_1m: pd.DataFrame, df_15m: pd.DataFrame
+    ) -> Tuple[bool, float]:
+        """점수 기반 매수 신호 확인
+
+        Returns:
+            Tuple[bool, float]: (매수 신호 여부, 계산된 점수)
+        """
         if len(df_1m) < 20 or len(df_15m) < 20:
-            return False
+            return False, 0.0
 
         score = self._calculate_score(symbol, df_1m)
         threshold = self.settings.get('buy_score', {}).get('score_threshold', 0)
-        if score >= threshold:
-            self.logger.info(f"{symbol} 매수 점수 {score} / {threshold}")
-            return True
-        return False
+
+        # 점수와 임계값을 항상 기록하여 디버깅에 활용한다
+        self.logger.info(f"{symbol} 매수 점수 {score} / {threshold}")
+
+        return score >= threshold, score
 
     def _calculate_score(self, symbol: str, df_1m: pd.DataFrame) -> float:
         conf = self.settings.get('buy_score', {})
