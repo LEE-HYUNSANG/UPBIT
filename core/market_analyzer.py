@@ -38,6 +38,7 @@ import threading
 import time
 from collections import deque
 from functools import wraps
+from config.default_settings import DEFAULT_SETTINGS
 import ta
 
 # 환경변수 로드
@@ -229,7 +230,12 @@ class MarketAnalyzer:
                 
             with open(self.config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-                
+
+            if 'buy_score' not in config:
+                config['buy_score'] = DEFAULT_SETTINGS.get('buy_score', {}).copy()
+                with open(self.config_path, 'w', encoding='utf-8') as wf:
+                    json.dump(config, wf, indent=4, ensure_ascii=False)
+
             return config
         except Exception as e:
             logger.error(f"설정 파일 로드 실패: {str(e)}")
@@ -237,30 +243,11 @@ class MarketAnalyzer:
             
     def _create_default_config(self) -> Dict:
         """기본 설정 생성"""
-        config = {
-            'market_analysis': {
-                'thresholds': {
-                    'bull': 0.02,
-                    'bear': -0.02
-                },
-                'weights': {
-                    'trend': 0.3,
-                    'volatility': 0.3,
-                    'volume': 0.2,
-                    'market_dominance': 0.2
-                }
-            },
-            'trade_settings': {
-                'base_amount': 10000,
-                'max_positions': 5,
-                'risk_per_trade': 0.01
-            }
-        }
-        
-        # 설정 파일 저장
+        config = DEFAULT_SETTINGS.copy()
+
         with open(self.config_path, 'w', encoding='utf-8') as f:
-            json.dump(config, f, indent=4)
-            
+            json.dump(config, f, indent=4, ensure_ascii=False)
+
         return config
         
     def _create_auth_token(self, query=None) -> Dict:
@@ -863,7 +850,8 @@ class MarketAnalyzer:
             new_config = {
                 'trading': self._prepare_trading_settings(settings),
                 'signals': self._prepare_signal_settings(settings),
-                'notifications': self._prepare_notification_settings(settings)
+                'notifications': self._prepare_notification_settings(settings),
+                'buy_score': self._prepare_buy_score_settings(settings)
             }
 
             # 임시 파일에 저장
@@ -981,6 +969,43 @@ class MarketAnalyzer:
                 'daily_summary': notifications['system']['daily_summary'],
                 'signal': notifications['system']['signal']
             }
+        }
+
+    def _prepare_buy_score_settings(self, settings: dict) -> dict:
+        """매수 점수 설정 준비"""
+        score = settings.get('buy_score', DEFAULT_SETTINGS.get('buy_score', {}))
+
+        def to_int(key, default=0):
+            try:
+                return int(score.get(key, default))
+            except (TypeError, ValueError):
+                return int(default)
+
+        def to_float(key, default=0.0):
+            try:
+                return float(score.get(key, default))
+            except (TypeError, ValueError):
+                return float(default)
+
+        return {
+            'strength_weight': to_int('strength_weight'),
+            'strength_threshold': to_float('strength_threshold'),
+            'volume_spike_weight': to_int('volume_spike_weight'),
+            'volume_spike_threshold': to_float('volume_spike_threshold'),
+            'orderbook_weight': to_int('orderbook_weight'),
+            'orderbook_threshold': to_float('orderbook_threshold'),
+            'momentum_weight': to_int('momentum_weight'),
+            'momentum_threshold': to_float('momentum_threshold'),
+            'near_high_weight': to_int('near_high_weight'),
+            'near_high_threshold': to_float('near_high_threshold'),
+            'trend_reversal_weight': to_int('trend_reversal_weight'),
+            'williams_weight': to_int('williams_weight'),
+            'williams_enabled': bool(score.get('williams_enabled', True)),
+            'stochastic_weight': to_int('stochastic_weight'),
+            'stochastic_enabled': bool(score.get('stochastic_enabled', True)),
+            'macd_weight': to_int('macd_weight'),
+            'macd_enabled': bool(score.get('macd_enabled', True)),
+            'score_threshold': to_float('score_threshold')
         }
 
     def _convert_numeric_values(self, settings: dict) -> dict:
