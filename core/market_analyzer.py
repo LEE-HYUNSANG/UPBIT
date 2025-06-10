@@ -756,7 +756,7 @@ class MarketAnalyzer:
             min_price = settings.get('min_price', 700)
             max_price = settings.get('max_price', 26666)
             min_volume_24h = settings.get('min_volume_24h', 1400000000)
-            min_volume_1h = settings.get('min_volume_1h', 20000000)
+            min_volume_1h = settings.get('min_volume_1h', 10000000)
             min_tick_ratio = settings.get('min_tick_ratio', 0.035)
 
             logger.info(
