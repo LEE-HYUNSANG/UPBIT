@@ -58,123 +58,6 @@ WEB_SETTINGS = {
         }
     },
 
-    # 매수 조건 설정
-    'buy_conditions': {
-        'trend_filter': {
-            'value': bool,           # 15분봉 추세 필터 사용
-            'default': True
-        },
-        'rsi': {
-            'enabled': {
-                'value': bool,
-                'default': True
-            },
-            'period': {
-                'value': int,
-                'min': 5,
-                'max': 30,
-                'step': 1,
-                'default': 14
-            },
-            'oversold': {
-                'value': float,
-                'min': 20.0,
-                'max': 40.0,
-                'step': 1.0,
-                'default': 30.0
-            }
-        },
-        'volume': {
-            'enabled': {
-                'value': bool,
-                'default': True
-            },
-            'surge_ratio': {
-                'value': float,
-                'min': 1.5,
-                'max': 10.0,
-                'step': 0.1,
-                'default': 3.0
-            }
-        },
-        'macd': {
-            'enabled': {
-                'value': bool,
-                'default': True
-            },
-            'fast_period': {
-                'value': int,
-                'min': 8,
-                'max': 16,
-                'step': 1,
-                'default': 12
-            },
-            'slow_period': {
-                'value': int,
-                'min': 20,
-                'max': 30,
-                'step': 1,
-                'default': 26
-            },
-            'signal_period': {
-                'value': int,
-                'min': 5,
-                'max': 12,
-                'step': 1,
-                'default': 9
-            }
-        }
-    },
-
-    # 매도 조건 설정
-    'sell_conditions': {
-        'stop_loss': {
-            'enabled': {
-                'value': bool,
-                'default': True
-            },
-            'threshold': {
-                'value': float,      # 손절 기준 (%)
-                'min': 1.0,
-                'max': 10.0,
-                'step': 0.1,
-                'default': 3.0
-            }
-        },
-        'take_profit': {
-            'enabled': {
-                'value': bool,
-                'default': True
-            },
-            'threshold': {
-                'value': float,      # 익절 기준 (%)
-                'min': 1.0,
-                'max': 20.0,
-                'step': 0.1,
-                'default': 5.0
-            }
-        },
-        'trailing_stop': {
-            'enabled': {
-                'value': bool,
-                'default': False
-            },
-            'activation_profit': {
-                'value': float,      # 트레일링 스탑 활성화 수익률 (%)
-                'min': 1.0,
-                'max': 10.0,
-                'step': 0.1,
-                'default': 2.0
-            },
-            'distance': {
-                'value': float,      # 트레일링 스탑 거리 (%)
-                'min': 0.5,
-                'max': 5.0,
-                'step': 0.1,
-                'default': 1.0
-            }
-        }
-    },
 
     # 알림 설정
     'notifications': {
@@ -236,7 +119,6 @@ SYSTEM_SETTINGS = {
         'backup_count': 7,          # 보관할 백업 수
         'tables': {
             'trades': 'trades',     # 거래 내역 테이블
-            'signals': 'signals',   # 매매 신호 테이블
             'assets': 'assets',     # 자산 내역 테이블
             'settings': 'settings'  # 설정 저장 테이블
         }
@@ -1066,10 +948,6 @@ MONITORING_INTERVAL=10
         "max_coins": 5,
         "min_price": 700,
         "max_price": 26666
-    },
-    "signals": {
-        "buy_conditions": {...},
-        "sell_conditions": {...}
     },
     "notifications": {...}
 }
