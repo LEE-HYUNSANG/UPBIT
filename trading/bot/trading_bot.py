@@ -142,7 +142,9 @@ class TradingBot:
                     continue
                     
                 # 매수 신호 확인
-                if self.strategy.check_buy_signal(symbol, df_1m, df_15m):
+                signal, score = self.strategy.check_buy_signal(symbol, df_1m, df_15m)
+                if signal:
+                    self.logger.info(f"{symbol} 매수 시도")
                     success, order_info = self.order_manager.buy_with_settings(symbol, self.buy_settings)
                     if success and order_info:
                         executed_volume = float(order_info.get('executed_volume', 0))
@@ -166,6 +168,8 @@ class TradingBot:
 
                             if len(self.strategy.positions) >= self.settings['trading']['max_coins']:
                                 break
+                    else:
+                        self.logger.warning(f"{symbol} 매수 주문 실패")
 
             except Exception as e:
                 self.logger.error(f"{symbol} 매수 신호 확인 실패: {str(e)}")

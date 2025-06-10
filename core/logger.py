@@ -26,13 +26,17 @@ class TradingLogger:
     def __init__(self, log_dir: str = 'logs'):
         """
         로거 초기화
-        
+
         Args:
             log_dir (str): 로그 파일이 저장될 디렉토리 경로
                 기본값: 'logs'
-        
+
         로그 디렉토리가 없는 경우 자동으로 생성합니다.
         """
+        if log_dir == 'logs':
+            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+            log_dir = os.path.join(base_dir, 'logs')
+
         self.log_dir = log_dir
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
