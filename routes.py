@@ -6,9 +6,8 @@ from core.market_analyzer import MarketAnalyzer
 from core.upbit_api import UpbitAPI
 from core.telegram_notifier import TelegramNotifier
 import logging
-import socketio
 import asyncio
-from flask_socketio import SocketIO
+from flask import current_app
 from config.default_settings import DEFAULT_SETTINGS  # 기본 설정 불러오기
 
 # 설정 파일 경로
@@ -95,7 +94,7 @@ def save_settings_api():
     try:
         settings = request.get_json()
         save_settings(settings)
-        socketio.emit('settings_updated', settings)
+        current_app.extensions['socketio'].emit('settings_updated', settings)
         return jsonify({'success': True})
     except Exception as e:
         logging.error(f'설정 저장 중 오류 발생: {str(e)}', exc_info=True)
@@ -106,7 +105,7 @@ def reset_settings():
     """설정 초기화 API"""
     try:
         save_settings(DEFAULT_SETTINGS)
-        socketio.emit('settings_updated', DEFAULT_SETTINGS)
+        current_app.extensions['socketio'].emit('settings_updated', DEFAULT_SETTINGS)
         return jsonify({'success': True})
     except Exception as e:
         logging.error(f'설정 초기화 중 오류 발생: {str(e)}', exc_info=True)
@@ -371,7 +370,7 @@ def stop_bot():
             asyncio.run(telegram.notify_system_stop("사용자 요청"))
         
         # 상태 업데이트 및 클라이언트에 알림
-        socketio.emit('bot_status', {
+        current_app.extensions['socketio'].emit('bot_status', {
             'is_running': False,
             'message': '봇이 중지되었습니다.',
             'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -457,17 +456,3 @@ def history_page():
 def logs_page():
     """로그 페이지 렌더링"""
     return render_template('logs.html')
-
-# Socket.IO 초기화
-socketio = SocketIO()
-
-def init_app(app):
-    # Blueprint 등록
-    app.register_blueprint(api)
-    
-    # Socket.IO 초기화
-    socketio.init_app(app)
-    
-    # 초기 설정 파일 생성
-    if not os.path.exists(SETTINGS_FILE):
-        save_settings(DEFAULT_SETTINGS) 
