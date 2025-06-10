@@ -760,6 +760,11 @@ class MarketAnalyzer:
                         'values': {
                             'rsi': conditions['values'].get('rsi'),
                             'slope': conditions['values'].get('slope'),
+                            'ema50': conditions['values'].get('ema50'),
+                            'sma5_slope': conditions['values'].get('slope'),
+                            'rsi14': conditions['values'].get('rsi'),
+                            'bb_lower': conditions['values'].get('bb_lower'),
+                            'volume': conditions['values'].get('volume'),
                             'volume_ratio': conditions['values'].get('volume_ma'),
                             'bb_position': conditions['values'].get('bb_lower')
                         },

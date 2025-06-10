@@ -251,7 +251,6 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>코인명</th>
                                         <th>코인 ID</th>
                                         <th>15분 추세</th>
                                         <th>골든크로스</th>
@@ -264,7 +263,7 @@
                                 </thead>
                                 <tbody id="monitoredCoinsTableBody">
                                     <tr>
-                                        <td colspan="9" class="text-center">모니터링 중인 코인이 없습니다.</td>
+                                        <td colspan="8" class="text-center">모니터링 중인 코인이 없습니다.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -476,18 +475,24 @@
             if (coins && coins.length > 0) {
                 coins.forEach(coin => {
                     const row = document.createElement('tr');
-                    
-                    // 신호 표시 함수
-                    const signalMark = (value, signal_value) => value ? `○ (${signal_value})` : `× (${signal_value})`;
-                    
+
+                    const indicators = coin.indicators || {};
+                    const values = coin.values || {};
+
+                    const signalMark = (flag, value) => {
+                        const display = value !== undefined && value !== null
+                            ? ` (${typeof value === 'number' ? value.toFixed(2) : value})`
+                            : '';
+                        return flag ? `○${display}` : `×${display}`;
+                    };
+
                     row.innerHTML = `
-                        <td>${coin.market_name}</td>
                         <td>${coin.market}</td>
-                        <td>${signalMark(coin.trend, coin.trend_value)}</td>
-                        <td>${signalMark(coin.golden_cross, coin.gc_value)}</td>
-                        <td>${signalMark(coin.rsi_oversold, coin.rsi_value)}</td>
-                        <td>${signalMark(coin.bb_break, coin.bb_value)}</td>
-                        <td>${signalMark(coin.volume_surge, coin.volume_value)}</td>
+                        <td>${signalMark(indicators.trend_filter, values.ema50)}</td>
+                        <td>${signalMark(indicators.golden_cross, values.sma5_slope)}</td>
+                        <td>${signalMark(indicators.rsi_oversold, values.rsi14)}</td>
+                        <td>${signalMark(indicators.bollinger_break, values.bb_lower)}</td>
+                        <td>${signalMark(indicators.volume_surge, values.volume)}</td>
                         <td><span class="badge bg-info">${coin.status}</span></td>
                         <td>
                             <button class="btn btn-sm btn-success" onclick="marketBuy('${coin.market}')">
@@ -499,7 +504,7 @@
                 });
             } else {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="9" class="text-center">모니터링 중인 코인이 없습니다.</td>';
+                row.innerHTML = '<td colspan="8" class="text-center">모니터링 중인 코인이 없습니다.</td>';
                 tableBody.appendChild(row);
             }
         }
