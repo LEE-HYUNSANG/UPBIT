@@ -754,12 +754,15 @@ class MarketAnalyzer:
                     if tick_ratio < min_tick_ratio:
                         continue
 
+                    change_rate_raw = ticker.get('signed_change_rate')
+                    change_rate = 0.0 if change_rate_raw is None else float(change_rate_raw) * 100
+
                     market_info.append({
                         'market': market['market'],
                         'name': market.get('korean_name', market['market']),
                         'current_price': current_price,
                         'trade_volume': trade_volume,
-                        'change_rate': float(ticker['signed_change_rate']) * 100,
+                        'change_rate': change_rate,
                         'tick_ratio': tick_ratio
                     })
                 except Exception as e:
