@@ -744,11 +744,12 @@ def send_monitoring_update():
         # 시장 상태 조회
         market_condition, confidence = market_analyzer.analyze_market_condition()
         
-        # 모니터링 중인 코인 정보 조회
-        monitored_coins = market_analyzer.get_monitored_markets()
+        # 모니터링 중인 코인 정보 조회 (선정된 상위 코인만)
+        monitored = market_analyzer.get_monitored_coins()
+        markets = [c['market'] for c in monitored]
         coin_data = []
-        
-        for market in monitored_coins:
+
+        for market in markets:
             try:
                 market_info = market_analyzer.get_market_info(market)
                 if market_info:

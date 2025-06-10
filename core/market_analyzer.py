@@ -756,6 +756,7 @@ class MarketAnalyzer:
             min_volume_24h = settings.get('min_volume_24h', 1400000000)
             min_volume_1h = settings.get('min_volume_1h', 10000000)
             min_tick_ratio = settings.get('min_tick_ratio', 0.035)
+            max_monitored = settings.get('max_monitored_coins', 25)
 
             logger.info(
                 f"코인 선정 기준: 가격 {min_price}~{max_price}원, 24h≥{min_volume_24h}, 1h≥{min_volume_1h}, 틱비율≥{min_tick_ratio}%"
@@ -889,6 +890,7 @@ class MarketAnalyzer:
                     continue
 
             monitored_coins.sort(key=lambda x: x['score'], reverse=True)
+            monitored_coins = monitored_coins[:max_monitored]
 
             logger.info(f"모니터링 대상 코인 {len(monitored_coins)}개 선택됨")
             return monitored_coins
