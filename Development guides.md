@@ -236,7 +236,6 @@ SYSTEM_SETTINGS = {
         'backup_count': 7,          # 보관할 백업 수
         'tables': {
             'trades': 'trades',     # 거래 내역 테이블
-            'signals': 'signals',   # 매매 신호 테이블
             'assets': 'assets',     # 자산 내역 테이블
             'settings': 'settings'  # 설정 저장 테이블
         }
@@ -1066,10 +1065,6 @@ MONITORING_INTERVAL=10
         "max_coins": 5,
         "min_price": 700,
         "max_price": 26666
-    },
-    "signals": {
-        "buy_conditions": {...},
-        "sell_conditions": {...}
     },
     "notifications": {...}
 }
