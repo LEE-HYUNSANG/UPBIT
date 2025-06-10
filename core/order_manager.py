@@ -48,7 +48,7 @@ class OrderManager:
         Args:
             market (str): 마켓 코드 (예: KRW-BTC)
             amount (float): 매수 금액
-            order_type (str): 주문 유형 (market/limit/limit-1)
+            order_type (str): 주문 유형 (best_bid/best_bid+1/best_ask/market)
 
         Returns:
             Tuple[bool, Optional[Dict]]: (성공 여부, 주문 정보)
@@ -61,26 +61,46 @@ class OrderManager:
                 return False, None
 
             ask_price = float(orderbook['orderbook_units'][0]['ask_price'])
-            
+            bid_price = float(orderbook['orderbook_units'][0]['bid_price'])
+            tick = ask_price - bid_price if ask_price > bid_price else bid_price * 0.001
+
             # 주문 유형별 처리
-            if order_type == 'market':
-                order = self.api.place_order(
-                    market=market,
-                    side='bid',
-                    price=amount,
-                    ord_type='price'
-                )
-            else:
-                # 지정가 주문의 경우 수량 계산
-                price = ask_price if order_type == 'limit' else ask_price * 0.999  # -1호가
+            if order_type == 'best_bid':
+                price = bid_price
                 volume = amount / price
-                
                 order = self.api.place_order(
                     market=market,
                     side='bid',
                     volume=volume,
                     price=price,
                     ord_type='limit'
+                )
+            elif order_type == 'best_bid+1':
+                price = bid_price + tick
+                volume = amount / price
+                order = self.api.place_order(
+                    market=market,
+                    side='bid',
+                    volume=volume,
+                    price=price,
+                    ord_type='limit'
+                )
+            elif order_type == 'best_ask':
+                price = ask_price
+                volume = amount / price
+                order = self.api.place_order(
+                    market=market,
+                    side='bid',
+                    volume=volume,
+                    price=price,
+                    ord_type='limit'
+                )
+            else:
+                order = self.api.place_order(
+                    market=market,
+                    side='bid',
+                    price=amount,
+                    ord_type='price'
                 )
 
             if not order:
@@ -117,7 +137,7 @@ class OrderManager:
         Args:
             market (str): 마켓 코드 (예: KRW-BTC)
             volume (float): 매도 수량
-            order_type (str): 주문 유형 (market/limit/limit+1)
+            order_type (str): 주문 유형 (best_ask/best_ask-1/best_bid/market)
 
         Returns:
             Tuple[bool, Optional[Dict]]: (성공 여부, 주문 정보)
@@ -129,26 +149,44 @@ class OrderManager:
                 logger.error(f"{market}: 호가 정보 조회 실패")
                 return False, None
 
+            ask_price = float(orderbook['orderbook_units'][0]['ask_price'])
             bid_price = float(orderbook['orderbook_units'][0]['bid_price'])
-            
+            tick = ask_price - bid_price if ask_price > bid_price else ask_price * 0.001
+
             # 주문 유형별 처리
-            if order_type == 'market':
-                order = self.api.place_order(
-                    market=market,
-                    side='ask',
-                    volume=volume,
-                    ord_type='market'
-                )
-            else:
-                # 지정가 주문 가격 설정
-                price = bid_price if order_type == 'limit' else bid_price * 1.001  # +1호가
-                
+            if order_type == 'best_ask':
+                price = ask_price
                 order = self.api.place_order(
                     market=market,
                     side='ask',
                     volume=volume,
                     price=price,
                     ord_type='limit'
+                )
+            elif order_type == 'best_ask-1':
+                price = ask_price - tick
+                order = self.api.place_order(
+                    market=market,
+                    side='ask',
+                    volume=volume,
+                    price=price,
+                    ord_type='limit'
+                )
+            elif order_type == 'best_bid':
+                price = bid_price
+                order = self.api.place_order(
+                    market=market,
+                    side='ask',
+                    volume=volume,
+                    price=price,
+                    ord_type='limit'
+                )
+            else:
+                order = self.api.place_order(
+                    market=market,
+                    side='ask',
+                    volume=volume,
+                    ord_type='market'
                 )
 
             if not order:
