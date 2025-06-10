@@ -178,4 +178,5 @@
     "min_volume_24h": 1400000000,
     "min_volume_1h": 0,
     "min_tick_ratio": 0.035
+    "take_profit_enabled": true
 }
