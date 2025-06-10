@@ -1,6 +1,6 @@
-# Eventlet가 설치되어 있어도 greendns 모듈이 로드되지 않도록 강제
+# Eventlet greendns 로드로 인한 dnspython 충돌을 방지하기 위해
 os.environ["EVENTLET_NO_GREENDNS"] = "yes"
-# socketio가 자동으로 eventlet을 선택하지 않도록 스레드 모드 지정
+# eventlet 대신 threading 모드를 강제한다
 os.environ["SOCKETIO_ASYNC_MODE"] = "threading"
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
