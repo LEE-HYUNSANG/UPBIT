@@ -82,6 +82,7 @@ python web/app.py
 4. 웹 인터페이스 접속
 - http://localhost:5000 접속
 - 설정 페이지: http://localhost:5000/settings
+- 설정을 변경하고 저장하면 `config.json` 파일에 기록되어 재시작 후에도 유지됩니다.
 - 대시보드: http://localhost:5000/dashboard
 
 ## 문제 해결(Troubleshooting)

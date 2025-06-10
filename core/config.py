@@ -529,13 +529,15 @@ class Config:
     def get_config(self) -> Dict[str, Any]:
         """
         현재 설정값 반환
-        
+
         현재 설정의 복사본을 반환합니다.
         복사본을 반환함으로써 실수로 설정이 변경되는 것을 방지합니다.
-        
+
         Returns:
             Dict[str, Any]: 현재 설정값의 복사본
         """
+        # 파일이 외부에서 수정되었을 수 있으므로 매 호출 시 최신 설정을 로드한다
+        self.config = self.load_config()
         cfg = self.config.copy()
 
         if "trading" in cfg:

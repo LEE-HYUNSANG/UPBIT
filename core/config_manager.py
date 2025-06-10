@@ -319,24 +319,27 @@ class ConfigManager:
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
-            # 설정 검증
-            self._validate_config(nested_config)
-
-            # 평면 구조 값은 그대로 보존하여 config.json에 함께 저장한다
-            for k, v in new_config.items():
-                self.config[k] = v
-
-            # 중첩된 설정 업데이트
-            def deep_update(d, u):
-                for k, v in u.items():
-                    if isinstance(v, dict):
-                        d[k] = deep_update(d.get(k, {}), v)
+            # 기존 설정과 병합하여 완전한 구성 생성
+            def deep_merge(src, updates):
+                for k, v in updates.items():
+                    if isinstance(v, dict) and isinstance(src.get(k), dict):
+                        src[k] = deep_merge(src.get(k, {}), v)
                     else:
-                        d[k] = v
-                return d
+                        src[k] = v
+                return src
 
-            # 설정 업데이트
-            self.config = deep_update(self.config, nested_config)
+            merged = deep_merge(json.loads(json.dumps(self.config)), nested_config)
+
+            # 설정 검증
+            self._validate_config(merged)
+
+            # 병합된 설정으로 갱신
+            self.config = merged
+
+            # 평면 구조 값도 저장한다
+            for k, v in new_config.items():
+                if not isinstance(v, dict):
+                    self.config[k] = v
             
             # 설정 파일 저장
             temp_file = self.config_file.with_suffix('.tmp')
