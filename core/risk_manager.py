@@ -22,13 +22,13 @@ class RiskManager:
     거래 시스템의 안전성을 위한 다양한 제한사항을 관리합니다.
     """
     
-    def __init__(self, config_path: str = 'config/config.json'):
+    def __init__(self, config_path: str = 'config.json'):
         """
         위험 관리자 초기화
         
         Args:
             config_path (str): 설정 파일 경로
-                기본값: 'config/config.json'
+                기본값: 'config.json'
                 
         설정 파일에서 다음 정보를 로드합니다:
         - 시스템 위험 관리 규칙 (일일 손실 한도, 연속 손실 제한 등)
