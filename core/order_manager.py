@@ -240,6 +240,9 @@ class OrderManager:
                 price = ask_price
 
             volume = amount / price
+            logger.info(
+                f"{market}: 지정가 매수 시도 - type={order_type}, price={price}, volume={volume}"
+            )
             order = self.api.place_order(
                 market=market,
                 side='bid',
@@ -296,13 +299,19 @@ class OrderManager:
         second_type = mapping.get(settings.get('2nd_Bid_Price', 'ASK1'), 'best_ask')
         second_wait = int(settings.get('LIMIT_WAIT_SEC_2', 0))
 
+        logger.info(
+            f"{market}: buy_with_settings amount={amount}, first_type={first_type}, second_type={second_type}"
+        )
+
         success, order = self._place_limit_order(market, amount, first_type, first_wait)
         if success:
+            logger.info(f"{market}: 1차 지정가 매수 체결 - uuid={order['uuid']}")
             return True, order
 
         if second_wait > 0:
             success, order = self._place_limit_order(market, amount, second_type, second_wait)
             if success:
+                logger.info(f"{market}: 2차 지정가 매수 체결 - uuid={order['uuid']}")
                 return True, order
 
         logger.info(f"{market}: 지정가 매수 실패, 시장가 매수 시도")
@@ -319,4 +328,8 @@ class OrderManager:
             return False, {'error': error_detail}
 
         success, final_order = self._wait_for_order(market_order['uuid'], 10)
+        if success:
+            logger.info(f"{market}: 시장가 매수 체결 - uuid={final_order['uuid']}")
+        else:
+            logger.error(f"{market}: 시장가 매수 미체결")
         return success, final_order

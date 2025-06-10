@@ -117,6 +117,8 @@ class MarketAnalyzer:
         
         # 거래 중지 등으로 조회 실패한 마켓 기록
         self.invalid_markets = set()
+        # 자동 매매로 이미 매수한 코인 추적
+        self.auto_bought = set()
 
     def register_socketio(self, socketio):
         """웹소켓 이벤트 핸들러 등록"""
@@ -699,6 +701,20 @@ class MarketAnalyzer:
                 # 모니터링 중인 코인 분석
                 monitored_coins = self.get_monitored_coins()
                 
+                # 자동 매매 실행
+                auto_enabled = self.config.get('auto_settings', {}).get('enabled', False)
+                if auto_enabled:
+                    holdings = self.get_holdings().keys()
+                    for coin in monitored_coins:
+                        if coin['score'] >= coin['threshold'] and coin['market'] not in holdings and coin['market'] not in self.auto_bought:
+                            logger.info(f"{coin['market']} 자동 매수 시도 (score={coin['score']:.2f})")
+                            result = self.buy_with_settings(coin['market'])
+                            if result.get('success'):
+                                self.auto_bought.add(coin['market'])
+                                logger.info(f"{coin['market']} 자동 매수 성공")
+                            else:
+                                logger.error(f"{coin['market']} 자동 매수 실패: {result.get('error')}")
+
                 # 소켓 이벤트로 데이터 전송
                 if self.socketio:
                     self.socketio.emit('bot_status', {
