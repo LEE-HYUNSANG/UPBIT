@@ -128,7 +128,7 @@ DEFAULT_SETTINGS = {
         "stochastic_enabled": True,
         "macd_weight": 1,
         "macd_enabled": True,
-        "score_threshold": 6,
+        "score_threshold": 5,
         # 코인별 점수 임계값
         "score_thresholds": {}
     },
