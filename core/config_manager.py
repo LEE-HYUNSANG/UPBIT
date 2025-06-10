@@ -36,7 +36,7 @@ import json
 from pathlib import Path
 from typing import Dict, Any
 from . import config
-from config.default_settings import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
+from config.order_defaults import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class ConfigManager:
     """
@@ -390,4 +390,27 @@ class ConfigManager:
             if 'investment_amount' in trading and trading['investment_amount'] <= 0:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
-                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.") 
+                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
+
+        if 'signals' in config:
+            signals = config['signals']
+            common = signals.get('common_conditions', {})
+            rsi = common.get('rsi', {})
+            if rsi.get('enabled', False):
+                period = rsi.get('period', 0)
+                if not isinstance(period, (int, float)) or not (0 < period <= 100):
+                    raise ValueError("RSI 기간은 1에서 100 사이여야 합니다.")
+
+            sell = signals.get('sell_conditions', {})
+            stop_loss = sell.get('stop_loss', {})
+            take_profit = sell.get('take_profit', {})
+            if (
+                stop_loss.get('enabled', False)
+                and take_profit.get('enabled', False)
+                and 'threshold' in stop_loss
+                and 'threshold' in take_profit
+            ):
+                sl_val = abs(float(stop_loss['threshold']))
+                tp_val = float(take_profit['threshold'])
+                if sl_val >= tp_val:
+                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
