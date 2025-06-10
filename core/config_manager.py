@@ -88,8 +88,10 @@ class ConfigManager:
                 "max_coins": 5,
                 "coin_selection": {
                     "min_price": 100,
-                    "max_price": 23000,
-                    "top_volume_count": 20,
+                    "max_price": 2666,
+                    "min_volume_24h": 1400000000,
+                    "min_volume_1h": 100000000,
+                    "min_tick_ratio": 0.04,
                     "excluded_coins": [
                         "KRW-ETHW",
                         "KRW-ETHF",
@@ -247,8 +249,10 @@ class ConfigManager:
                 "max_coins": config.get("max_coins", 5),
                 "coin_selection": {
                     "min_price": config.get("min_price", 100),
-                    "max_price": config.get("max_price", 23000),
-                    "top_volume_count": config.get("top_volume_count", 20)
+                    "max_price": config.get("max_price", 2666),
+                    "min_volume_24h": config.get("min_volume_24h", 1400000000),
+                    "min_volume_1h": config.get("min_volume_1h", 100000000),
+                    "min_tick_ratio": config.get("min_tick_ratio", 0.04)
                 }
             }
         else:
@@ -390,11 +394,15 @@ class ConfigManager:
                     raise ValueError("최소 코인 가격은 0 이상이어야 합니다.")
                 if 'max_price' in coin_selection and coin_selection['max_price'] <= 0:
                     raise ValueError("최대 코인 가격은 0보다 커야 합니다.")
-                if ('min_price' in coin_selection and 'max_price' in coin_selection and 
+                if ('min_price' in coin_selection and 'max_price' in coin_selection and
                     coin_selection['min_price'] >= coin_selection['max_price']):
                     raise ValueError("최대 코인 가격은 최소 코인 가격보다 커야 합니다.")
-                if 'top_volume_count' in coin_selection and coin_selection['top_volume_count'] <= 0:
-                    raise ValueError("상위 거래량 코인 수는 0보다 커야 합니다.")
+                if 'min_volume_24h' in coin_selection and coin_selection['min_volume_24h'] < 0:
+                    raise ValueError("24시간 거래대금은 0 이상이어야 합니다.")
+                if 'min_volume_1h' in coin_selection and coin_selection['min_volume_1h'] < 0:
+                    raise ValueError("1시간 거래대금은 0 이상이어야 합니다.")
+                if 'min_tick_ratio' in coin_selection and coin_selection['min_tick_ratio'] < 0:
+                    raise ValueError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
             
             if 'investment_amount' in trading and trading['investment_amount'] <= 0:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")

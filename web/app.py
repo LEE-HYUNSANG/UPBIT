@@ -157,8 +157,10 @@ def get_default_config():
             "max_coins": 8,
             "coin_selection": {
                 "min_price": 700,
-                "max_price": 23000,
-                "top_volume_count": 20,
+                "max_price": 2666,
+                "min_volume_24h": 1400000000,
+                "min_volume_1h": 100000000,
+                "min_tick_ratio": 0.04,
                 "excluded_coins": ["KRW-ETHW", "KRW-ETHF", "KRW-XCORE", "KRW-GAS", "KRW-BTC"]
             }
         },
@@ -328,7 +330,11 @@ def validate_config(config):
             
         if not isinstance(coin_selection.get('max_price', 0), (int, float)) or coin_selection['max_price'] <= coin_selection['min_price']:
             validation_errors.append("[오류] max_price는 min_price보다 커야 합니다.")
-            
+
+        for key in ['min_volume_24h', 'min_volume_1h', 'min_tick_ratio']:
+            if not isinstance(coin_selection.get(key, 0), (int, float)) or coin_selection[key] < 0:
+                validation_errors.append(f"[오류] {key}는 0 이상 숫자여야 합니다.")
+
         if not isinstance(coin_selection.get('excluded_coins', []), list):
             validation_errors.append("[오류] excluded_coins는 리스트여야 합니다.")
 

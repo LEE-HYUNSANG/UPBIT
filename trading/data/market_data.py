@@ -63,21 +63,33 @@ class MarketData:
         """
         try:
             # 설정값에서 필터링 조건 가져오기
-            min_price = self.settings['trading']['min_price']
-            max_price = self.settings['trading']['max_price']
-            top_volume_count = self.settings['trading']['top_volume_count']
+            coin_sel = self.settings['trading']['coin_selection']
+            min_price = coin_sel['min_price']
+            max_price = coin_sel['max_price']
+            min_volume_24h = coin_sel.get('min_volume_24h', 0)
+            min_volume_1h = coin_sel.get('min_volume_1h', 0)
             
             # 가격 범위 내의 코인 필터링
             investable = self.exchange.get_investable_tickers(min_price, max_price)
             
-            # 거래량 상위 코인 필터링
-            volume_tops = self.exchange.get_top_volume_tickers(count=top_volume_count)
-            
-            # 두 조건을 모두 만족하는 코인만 선택
-            tradable = list(set(investable) & set(volume_tops))
+            # 24시간 거래대금 및 1시간 평균 거래대금 필터링
+            tradable = []
+            for ticker in investable:
+                info = self.exchange.get_market_info(ticker)
+                if not info:
+                    continue
+                if info.get('acc_trade_price_24h', 0) < min_volume_24h:
+                    continue
+                candles = self.exchange.get_ohlcv(ticker, 'minute1', 60)
+                if candles is None:
+                    continue
+                hour_volume = candles['candle_acc_trade_price'].sum() / len(candles)
+                if hour_volume < min_volume_1h:
+                    continue
+                tradable.append(ticker)
             
             # 제외 코인 필터링
-            excluded = set(self.settings['trading'].get('excluded_coins', []))
+            excluded = set(coin_sel.get('excluded_coins', []))
             tradable = [symbol for symbol in tradable if symbol not in excluded]
             
             return tradable

@@ -130,8 +130,10 @@ class Config:
             "max_coins": 5,
             "coin_selection": {
                 "min_price": 100,
-                "max_price": 23000,
-                "top_volume_count": 20
+                "max_price": 2666,
+                "min_volume_24h": 1400000000,
+                "min_volume_1h": 100000000,
+                "min_tick_ratio": 0.04
             }
         },
         "signals": {
@@ -379,8 +381,14 @@ class Config:
         if coin_selection.get('max_price', 0) <= coin_selection.get('min_price', 0):
             raise ConfigError("최대 코인 가격은 최소 코인 가격보다 커야 합니다.")
         
-        if coin_selection.get('top_volume_count', 0) <= 0:
-            raise ConfigError("상위 거래량 코인 수는 0보다 커야 합니다.")
+        if coin_selection.get('min_volume_24h', 0) < 0:
+            raise ConfigError("24시간 거래대금은 0 이상이어야 합니다.")
+
+        if coin_selection.get('min_volume_1h', 0) < 0:
+            raise ConfigError("1시간 거래대금은 0 이상이어야 합니다.")
+
+        if coin_selection.get('min_tick_ratio', 0) < 0:
+            raise ConfigError("호가 틱당 가격 변동률은 0 이상이어야 합니다.")
         
         # === 매매 신호 설정 검증 ===
         signals_config = config.get('signals', {})

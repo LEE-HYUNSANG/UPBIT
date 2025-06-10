@@ -258,10 +258,6 @@ def get_monitored():
         # 거래량 기준으로 정렬
         monitored_coins.sort(key=lambda x: x['trade_volume'], reverse=True)
         
-        # 상위 20개만 선택 (또는 설정된 값)
-        top_volume = settings.get('top_volume', 20)
-        monitored_coins = monitored_coins[:top_volume]
-        
         logger.info(f"모니터링 코인 조회: {len(monitored_coins)}개")
         return jsonify({
             'status': 'success',

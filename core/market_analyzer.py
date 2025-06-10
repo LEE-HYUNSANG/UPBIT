@@ -361,11 +361,31 @@ class MarketAnalyzer:
             data = self._send_request('GET', '/v1/market/all', {'isDetails': 'false'})
             if not data:
                 return []
-                
+
             return [item['market'] for item in data if item['market'].startswith('KRW-')]
         except Exception as e:
             logger.error(f"마켓 목록 조회 실패: {str(e)}")
             return []
+
+    def _get_tick_size(self, price: float) -> float:
+        """업비트 가격대별 호가 단위 계산"""
+        if price < 10:
+            return 0.01
+        if price < 100:
+            return 0.1
+        if price < 1000:
+            return 1
+        if price < 10000:
+            return 5
+        if price < 100000:
+            return 10
+        if price < 500000:
+            return 50
+        if price < 1000000:
+            return 100
+        if price < 2000000:
+            return 500
+        return 1000
             
     def analyze_market_condition(self) -> Tuple[str, float]:
         """시장 상태 분석"""
@@ -674,12 +694,17 @@ class MarketAnalyzer:
         """모니터링 중인 코인 목록과 신호 조회"""
         try:
             # 설정에서 필터링 기준 가져오기
-            settings = self.config.get('trade_settings', {})
+            trading = self.config.get('trading', {})
+            settings = trading.get('coin_selection', {})
             min_price = settings.get('min_price', 700)
-            max_price = settings.get('max_price', 23000)
-            top_volume = settings.get('top_volume', 20)
-            
-            logger.info(f"코인 선정 기준: 가격 {min_price}~{max_price}원, 상위 거래량 {top_volume}개")
+            max_price = settings.get('max_price', 2666)
+            min_volume_24h = settings.get('min_volume_24h', 1400000000)
+            min_volume_1h = settings.get('min_volume_1h', 100000000)
+            min_tick_ratio = settings.get('min_tick_ratio', 0.04)
+
+            logger.info(
+                f"코인 선정 기준: 가격 {min_price}~{max_price}원, 24h≥{min_volume_24h}, 1h≥{min_volume_1h}, 틱비율≥{min_tick_ratio}%"
+            )
             
             # 업비트 마켓 정보 조회
             markets = self._send_request('GET', '/v1/market/all', {'isDetails': 'true'})
@@ -707,26 +732,41 @@ class MarketAnalyzer:
                     market = next((m for m in krw_markets if m['market'] == ticker['market']), None)
                     if not market:
                         continue
-                        
+
                     current_price = float(ticker['trade_price'])
                     trade_volume = float(ticker['acc_trade_price_24h'])
-                    
-                    # 가격 범위 필터링
-                    if min_price <= current_price <= max_price:
-                        market_info.append({
-                            'market': market['market'],
-                            'name': market.get('korean_name', market['market']),
-                            'current_price': current_price,
-                            'trade_volume': trade_volume,
-                            'change_rate': float(ticker['signed_change_rate']) * 100
-                        })
+                    if not (min_price <= current_price <= max_price):
+                        continue
+                    if trade_volume < min_volume_24h:
+                        continue
+
+                    candles_1h = self.get_candles(market['market'], interval='minute1', count=60)
+                    if not candles_1h:
+                        continue
+                    avg_volume = sum(float(c['candle_acc_trade_price']) for c in candles_1h) / len(candles_1h)
+                    if avg_volume < min_volume_1h:
+                        continue
+                    high_price = max(float(c['high_price']) for c in candles_1h)
+                    low_price = min(float(c['low_price']) for c in candles_1h)
+                    if high_price < low_price * 1.002:
+                        continue
+                    tick_ratio = self._get_tick_size(current_price) / current_price * 100
+                    if tick_ratio < min_tick_ratio:
+                        continue
+
+                    market_info.append({
+                        'market': market['market'],
+                        'name': market.get('korean_name', market['market']),
+                        'current_price': current_price,
+                        'trade_volume': trade_volume,
+                        'change_rate': float(ticker['signed_change_rate']) * 100,
+                        'tick_ratio': tick_ratio
+                    })
                 except Exception as e:
                     logger.error(f"{ticker['market']} 정보 처리 중 오류: {str(e)}")
                     continue
-            
-            # 거래량 기준 정렬 및 상위 선택
-            market_info.sort(key=lambda x: x['trade_volume'], reverse=True)
-            selected_markets = market_info[:top_volume]
+
+            selected_markets = market_info
             
             logger.info(f"선정 기준 통과 마켓 수: {len(selected_markets)}")
             
@@ -857,7 +897,9 @@ class MarketAnalyzer:
 
             # 거래 설정 검증
             trading = settings.get('trading', {})
-            if not all(key in trading for key in ['investment_amount', 'max_coins', 'min_price', 'max_price']):
+            coin_sel = trading.get('coin_selection', {})
+            required = ['investment_amount', 'max_coins']
+            if not all(key in trading for key in required) or not all(k in coin_sel for k in ['min_price', 'max_price', 'min_volume_24h', 'min_volume_1h', 'min_tick_ratio']):
                 logger.error("거래 설정이 올바르지 않습니다.")
                 return False
 
@@ -878,13 +920,18 @@ class MarketAnalyzer:
     def _prepare_trading_settings(self, settings: dict) -> dict:
         """거래 설정 준비"""
         trading = settings.get('trading', {})
+        coin_sel = trading.get('coin_selection', {})
         return {
             'investment_amount': float(trading['investment_amount']),
             'max_coins': int(trading['max_coins']),
-            'min_price': float(trading['min_price']),
-            'max_price': float(trading['max_price']),
-            'top_volume_count': int(trading['top_volume_count']),
-            'excluded_coins': trading.get('excluded_coins', [])
+            'coin_selection': {
+                'min_price': float(coin_sel['min_price']),
+                'max_price': float(coin_sel['max_price']),
+                'min_volume_24h': float(coin_sel['min_volume_24h']),
+                'min_volume_1h': float(coin_sel['min_volume_1h']),
+                'min_tick_ratio': float(coin_sel['min_tick_ratio']),
+                'excluded_coins': coin_sel.get('excluded_coins', [])
+            }
         }
 
     def _prepare_signal_settings(self, settings: dict) -> dict:
