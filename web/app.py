@@ -850,7 +850,16 @@ def background_updates():
     while True:
         try:
             if bot_status['is_running']:
+                # 봇 실행 중에는 시장 분석 데이터를 주기적으로 전송
                 send_monitoring_update()
+            else:
+                # 봇이 중지된 경우에도 모니터링 코인 목록을 갱신하여 전송
+                monitored_coins = market_analyzer.get_monitored_coins()
+                socketio.emit('monitored_coins_update', {
+                    'coins': monitored_coins,
+                    'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+
             time.sleep(20)  # 20초마다 업데이트
         except Exception as e:
             logger.error(f"백그라운드 업데이트 중 오류 발생: {str(e)}")
