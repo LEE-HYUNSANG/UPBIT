@@ -17,8 +17,9 @@ const recommendedSettings = {
         investment_amount: 10000,    // 1만원 단위 테스트 추천
         max_coins: 8,               // 동시 보유 최대 8개 코인
         coin_selection: {
-            min_price: 100,         // 최소 100원
-            max_price: 500000,      // 최대 50만원
+            // 기본값 업데이트
+            min_price: 700,         // 최소 가격 (원)
+            max_price: 26666,       // 최대 가격 (원)
             min_volume_24h: 1400000000,
             min_volume_1h: 100000000,
             min_tick_ratio: 0.04,
