@@ -331,7 +331,7 @@ class ConfigManager:
             merged = deep_merge(json.loads(json.dumps(self.config)), nested_config)
 
             # 설정 검증
-            self._validate_config(merged, new_config)
+            self._validate_config(merged)
 
             # 병합된 설정으로 갱신
             self.config = merged
@@ -358,7 +358,7 @@ class ConfigManager:
             print(f"설정 업데이트 실패: {e}")
             raise ValueError(f"설정 업데이트 실패: {e}")
             
-    def _validate_config(self, config: Dict[str, Any], updates: Dict[str, Any] | None = None):
+    def _validate_config(self, config: Dict[str, Any]):
         """
         설정값 유효성 검사
         
@@ -390,24 +390,4 @@ class ConfigManager:
             if 'investment_amount' in trading and trading['investment_amount'] <= 0:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
-                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
-
-        # RSI 및 손절/익절 설정 검증
-        if 'signals' in config:
-            signals = config['signals']
-            common = signals.get('common_conditions', {})
-            rsi_common = common.get('rsi', {})
-            if rsi_common.get('enabled'):
-                period = rsi_common.get('period', 14)
-                if period <= 0 or period > 100:
-                    raise ValueError("RSI 기간은 1에서 100 사이여야 합니다.")
-
-            stop_loss_updated = updates and 'stop_loss' in updates
-            take_profit_updated = updates and 'take_profit' in updates
-
-            sell_conditions = signals.get('sell_conditions', {})
-            stop_loss = sell_conditions.get('stop_loss', {})
-            take_profit = sell_conditions.get('take_profit', {})
-            if stop_loss.get('enabled') and take_profit.get('enabled') and stop_loss_updated and take_profit_updated:
-                if abs(stop_loss.get('threshold', 0)) >= take_profit.get('threshold', 0):
-                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
+                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.") 
