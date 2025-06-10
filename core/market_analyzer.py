@@ -77,6 +77,7 @@ class MarketAnalyzer:
     def __init__(self, config_path: str = 'config.json'):
         """초기화"""
         self.config_path = config_path
+        self.buy_settings_path = str(Path(__file__).parent.parent / 'config' / 'buy_settings.json')
         self.server_url = 'https://api.upbit.com'
         self.request_timeout = 10
         self.cache_duration = 900
@@ -1598,6 +1599,33 @@ class MarketAnalyzer:
         volume_ma = df['volume'].rolling(window=period).mean()
         if len(volume_ma) < period:
             return False
-            
+
         # 현재 거래량이 이동평균의 surge_ratio배 이상인지 확인
-        return df['volume'].iloc[-1] >= (volume_ma.iloc[-1] * surge_ratio) 
+        return df['volume'].iloc[-1] >= (volume_ma.iloc[-1] * surge_ratio)
+
+    def get_buy_settings(self) -> Dict:
+        """매수 주문 설정 조회"""
+        try:
+            if os.path.exists(self.buy_settings_path):
+                with open(self.buy_settings_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.error(f"매수 설정 로드 실패: {e}")
+        return {}
+
+    def save_buy_settings(self, settings: Dict) -> bool:
+        """매수 주문 설정 저장"""
+        try:
+            tmp = self.buy_settings_path + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(settings, f, indent=4, ensure_ascii=False)
+            os.replace(tmp, self.buy_settings_path)
+            return True
+        except Exception as e:
+            logger.error(f"매수 설정 저장 실패: {e}")
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
+            return False

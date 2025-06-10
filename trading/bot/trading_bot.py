@@ -1,7 +1,5 @@
 import time
 import json
-import os
-import math
 from typing import Dict, List, Optional
 from core.upbit_api import UpbitAPI
 from core.order_manager import OrderManager
@@ -33,9 +31,12 @@ class TradingBot:
         # 전략 초기화
         self.strategy = OneMinStrategy(settings, self.exchange)
 
-        sell_config_path = os.path.join('config', 'sell_settings.json')
-        with open(sell_config_path, 'r', encoding='utf-8') as f:
-            self.sell_settings = json.load(f)
+        # 매수 설정 로드
+        try:
+            with open("config/buy_settings.json", "r", encoding="utf-8") as f:
+                self.buy_settings = json.load(f)
+        except Exception:
+            self.buy_settings = {}
 
         # 실행 상태
         self.is_running = False
@@ -139,34 +140,9 @@ class TradingBot:
                         executed_volume = float(order_info.get('executed_volume', 0))
                         if executed_volume:
                             avg_price = float(order_info['price']) / executed_volume
+                            self.strategy.update_position(symbol, avg_price, executed_volume)
+                            self.logger.info(f"{symbol} 매수 완료")
 
-                            tick = self._get_tick_size(avg_price)
-                            target = avg_price * (1 + self.sell_settings['TP_PCT'] / 100)
-                            diff_ticks = math.ceil((target - avg_price) / tick)
-                            if diff_ticks < self.sell_settings['MINIMUM_TICKS']:
-                                diff_ticks = self.sell_settings['MINIMUM_TICKS']
-                            sell_price = avg_price + diff_ticks * tick
-
-                            sell_order = self.exchange.place_order(
-                                market=symbol,
-                                side='ask',
-                                volume=executed_volume,
-                                price=sell_price,
-                                ord_type='limit'
-                            )
-                            if sell_order:
-                                self.strategy.update_position(
-                                    symbol,
-                                    avg_price,
-                                    executed_volume,
-                                    sell_order['uuid'],
-                                    sell_price,
-                                )
-                                self.logger.info(f"{symbol} 매수 및 매도 주문 설정 완료")
-                            else:
-                                self.logger.error(f"{symbol} 매도 주문 실패")
-                            
-                            # 최대 보유 코인 수 도달 시 종료
                             if len(self.strategy.positions) >= self.settings['trading']['max_coins']:
                                 break
 

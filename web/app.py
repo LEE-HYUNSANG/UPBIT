@@ -484,6 +484,31 @@ def save_settings():
             'error': str(e)
         }), 500
 
+@app.route('/api/buy_settings', methods=['GET'])
+def get_buy_settings():
+    """매수 주문 설정 조회"""
+    try:
+        settings = market_analyzer.get_buy_settings()
+        return jsonify({'success': True, 'data': settings})
+    except Exception as e:
+        logger.error(f"매수 설정 조회 오류: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/buy_settings', methods=['POST'])
+def save_buy_settings():
+    """매수 주문 설정 저장"""
+    try:
+        settings = request.json
+        if not settings:
+            return jsonify({'success': False, 'error': '데이터가 비어있습니다.'}), 400
+        if market_analyzer.save_buy_settings(settings):
+            return jsonify({'success': True})
+        return jsonify({'success': False, 'error': '매수 설정 저장 실패'}), 500
+    except Exception as e:
+        logger.error(f"매수 설정 저장 오류: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/holdings', methods=['GET'])
 def get_holdings():
     """현재 보유 중인 코인 정보 조회"""
