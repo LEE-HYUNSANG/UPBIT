@@ -1,10 +1,7 @@
-import os
-
 # Eventlet greendns 로드로 인한 dnspython 충돌을 방지하기 위해
 os.environ["EVENTLET_NO_GREENDNS"] = "yes"
 # eventlet 대신 threading 모드를 강제한다
 os.environ["SOCKETIO_ASYNC_MODE"] = "threading"
-
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
 import json
