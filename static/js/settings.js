@@ -23,8 +23,7 @@ const recommendedSettings = {
             min_volume_24h: 1400000000,
             min_volume_1h: 100000000,
             min_tick_ratio: 0.04,
-            excluded_coins: [],
-            buy_price_type: 'best_bid'    // 매수가 설정 (best_bid/best_bid+1/best_ask)
+            excluded_coins: []
         }
     },
     signals: {
@@ -123,12 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // 매수가 설정 변경 이벤트
-    document.querySelectorAll('input[name="buy_price_type"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            markSettingsAsChanged();
-        });
-    });
 });
 
 // 제외 코인 추가
@@ -230,10 +223,6 @@ function updateFormValues(settings) {
     setValue('trading.min_volume_24h', settings.trading?.coin_selection?.min_volume_24h);
     setValue('trading.min_volume_1h', settings.trading?.coin_selection?.min_volume_1h);
     setValue('trading.min_tick_ratio', settings.trading?.coin_selection?.min_tick_ratio);
-
-    // 매수가 설정
-    const buyPriceType = settings.trading?.buy_price_type || 'best_bid';
-    document.querySelector(`input[name="buy_price_type"][value="${buyPriceType}"]`).checked = true;
 
     // 매수 지표 설정
     const buyConditions = settings.signals?.buy_conditions || {};
@@ -358,8 +347,7 @@ function saveSettings() {
                 min_volume_24h: getNumberValue('trading.min_volume_24h'),
                 min_volume_1h: getNumberValue('trading.min_volume_1h'),
                 min_tick_ratio: getNumberValue('trading.min_tick_ratio'),
-                excluded_coins: excludedCoins,
-                buy_price_type: document.querySelector('input[name="buy_price_type"]:checked').value
+                excluded_coins: excludedCoins
             }
         },
         signals: {

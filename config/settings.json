@@ -14,7 +14,6 @@
                 "KRW-XCORE",
                 "KRW-GAS"
             ],
-            "buy_price_type": "best_bid",
             "sell_price_type": "best_ask"
         }
     },
