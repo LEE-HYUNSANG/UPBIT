@@ -1202,6 +1202,10 @@ class MarketAnalyzer:
         except Exception as e:
             logger.error(f"선매도 주문 처리 중 오류 발생: {str(e)}")
 
+    def place_pre_sell(self, market: str, buy_order: Dict) -> None:
+        """매수 후 선매도 주문을 실행하는 공개 메서드"""
+        self._place_pre_sell(market, buy_order)
+
     def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
         """캔들 데이터 조회"""
         try:
