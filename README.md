@@ -75,6 +75,9 @@ pip install -r requirements.txt
 ```env
 UPBIT_ACCESS_KEY=your_access_key
 UPBIT_SECRET_KEY=your_secret_key
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+LOG_LEVEL=INFO
 ```
 실제 키로 교체한 후 저장하세요.
 
@@ -100,6 +103,13 @@ python web/app.py
 ```bash
 pip install -r requirements.txt
 ```
+
+### 로그 확인
+
+텔레그램 알림이 동작하지 않는다면 프로젝트 루트에 생성되는 `trading.log`
+파일을 확인하세요. 메시지 전송 시도와 응답 코드가 기록되어 원인을 파악할 수
+있습니다. 더 자세한 정보를 원한다면 `.env` 파일에서 `LOG_LEVEL=DEBUG`로
+설정한 뒤 다시 실행하세요.
 
 ## 주의사항
 
