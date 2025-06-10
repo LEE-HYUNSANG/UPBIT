@@ -143,10 +143,18 @@ class MarketAnalyzer:
         """설정 업데이트"""
         try:
             logger.info("설정 업데이트 시작")
-            
-            # 기존 설정과 새로운 설정 병합
-            self.config.update(new_config)
-            
+
+            # 기존 설정과 새로운 설정 병합 (깊은 병합으로 누락된 값 보존)
+            def deep_merge(src, updates):
+                for k, v in updates.items():
+                    if isinstance(v, dict) and isinstance(src.get(k), dict):
+                        src[k] = deep_merge(src.get(k, {}), v)
+                    else:
+                        src[k] = v
+                return src
+
+            self.config = deep_merge(self.config, new_config)
+
             # 설정 파일 저장
             with open(self.config_path, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4, ensure_ascii=False)
