@@ -476,15 +476,9 @@ class MarketAnalyzer:
                 return 'NEUTRAL', 0.5
                 
             average_change = total_change / valid_markets
-            thresholds = self.config.get('market_analysis', {}).get('thresholds', {'bull': 0.02, 'bear': -0.02})
-            
-            try:
-                bull_threshold = float(thresholds['bull'])
-                bear_threshold = float(thresholds['bear'])
-            except (KeyError, ValueError, TypeError):
-                bull_threshold = 0.02
-                bear_threshold = -0.02
-                logger.warning("임계값 설정을 찾을 수 없어 기본값 사용: bull=2%, bear=-2%")
+            thresholds = self.config.get('market_analysis', {}).get('thresholds', {})
+            bull_threshold = safe_float(thresholds.get('bull'), 0.02)
+            bear_threshold = safe_float(thresholds.get('bear'), -0.02)
             
             if average_change > bull_threshold:
                 status = 'BULL'
