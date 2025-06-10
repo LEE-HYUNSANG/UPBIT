@@ -21,8 +21,8 @@ const recommendedSettings = {
             max_price: 500000,      // 최대 50만원
             top_volume_count: 30,    // 상위 30개 거래량
             excluded_coins: [],
-            buy_price_type: 'market',    // 매수가 설정 (market/limit/under)
-            sell_price_type: 'market'    // 매도가 설정 (market/limit/over)
+            buy_price_type: 'best_bid',    // 매수가 설정 (best_bid/best_bid+1/best_ask)
+            sell_price_type: 'best_ask'    // 매도가 설정 (best_ask/best_ask-1/best_bid)
         }
     },
     signals: {
@@ -215,11 +215,11 @@ function updateFormValues(settings) {
     setValue('trading.top_volume_count', settings.trading?.coin_selection?.top_volume_count);
 
     // 매수가 설정
-    const buyPriceType = settings.trading?.buy_price_type || 'market';
+    const buyPriceType = settings.trading?.buy_price_type || 'best_bid';
     document.querySelector(`input[name="buy_price_type"][value="${buyPriceType}"]`).checked = true;
 
     // 매도가 설정
-    const sellPriceType = settings.trading?.sell_price_type || 'market';
+    const sellPriceType = settings.trading?.sell_price_type || 'best_ask';
     document.querySelector(`input[name="sell_price_type"][value="${sellPriceType}"]`).checked = true;
 
     // 매수 지표 설정
