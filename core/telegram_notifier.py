@@ -403,13 +403,6 @@ class TelegramNotifier:
             message += f"- 방향: {trend['direction']}\n"
             message += f"- 강도: {trend['strength']}\n"
             
-        # 거래 신호
-        if 'signals' in analysis:
-            signals = analysis['signals']
-            message += f"\n🎯 거래 신호:\n"
-            for signal, value in signals.items():
-                emoji = "✅" if value else "❌"
-                message += f"- {signal}: {emoji}\n"
                 
         await self.send_message(message)
         
