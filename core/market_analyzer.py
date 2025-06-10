@@ -1023,8 +1023,10 @@ class MarketAnalyzer:
 
         return {
             'strength_weight': to_int('strength_weight'),
+            'strength_threshold_low': to_float('strength_threshold_low'),
             'strength_threshold': to_float('strength_threshold'),
             'volume_spike_weight': to_int('volume_spike_weight'),
+            'volume_spike_threshold_low': to_float('volume_spike_threshold_low'),
             'volume_spike_threshold': to_float('volume_spike_threshold'),
             'orderbook_weight': to_int('orderbook_weight'),
             'orderbook_threshold': to_float('orderbook_threshold'),
@@ -1456,13 +1458,18 @@ class MarketAnalyzer:
                 strength = (buy_vol / sell_vol * 100) if sell_vol else 0
                 if strength >= conf.get('strength_threshold', 130):
                     score += conf['strength_weight']
+                elif strength >= conf.get('strength_threshold_low', 110):
+                    score += conf['strength_weight'] / 2
 
         # 2. 실시간 거래량 급증
         if conf.get('volume_spike_weight', 0) > 0 and len(df_1m) > 5:
             recent_vol = df_1m['volume'].iloc[-1]
             avg_vol = df_1m['volume'].iloc[-6:-1].mean()
-            if avg_vol and recent_vol >= avg_vol * (conf.get('volume_spike_threshold', 200) / 100):
-                score += conf['volume_spike_weight']
+            if avg_vol:
+                if recent_vol >= avg_vol * (conf.get('volume_spike_threshold', 200) / 100):
+                    score += conf['volume_spike_weight']
+                elif recent_vol >= avg_vol * (conf.get('volume_spike_threshold_low', 150) / 100):
+                    score += conf['volume_spike_weight'] / 2
 
         # 3. 호가 잔량 불균형
         if conf.get('orderbook_weight', 0) > 0:
