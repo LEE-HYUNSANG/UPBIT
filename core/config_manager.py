@@ -139,7 +139,8 @@ class ConfigManager:
         if any(k in config for k in [
             "rsi_enabled", "rsi_period", "rsi_buy_enabled",
             "rsi_buy_threshold", "rsi_sell_enabled", "rsi_sell_threshold",
-            "bollinger_enabled", "stop_loss_enabled", "stop_loss"]):
+            "bollinger_enabled", "stop_loss_enabled", "stop_loss",
+            "take_profit_enabled", "take_profit"]):
             signals = nested.get("signals", {})
             common = signals.get("common_conditions", {})
             rsi_common = common.get("rsi", {})
@@ -186,6 +187,13 @@ class ConfigManager:
                     # Config 모듈의 검증 규칙을 통과하도록 음수 값으로 저장
                     sl["threshold"] = -abs(config["stop_loss"])
                 sell["stop_loss"] = sl
+            if "take_profit_enabled" in config or "take_profit" in config:
+                tp = sell.get("take_profit", {})
+                if "take_profit_enabled" in config:
+                    tp["enabled"] = config["take_profit_enabled"]
+                if "take_profit" in config:
+                    tp["threshold"] = config["take_profit"]
+                sell["take_profit"] = tp
             if sell:
                 signals.setdefault("sell_conditions", {}).update(sell)
 
@@ -319,6 +327,15 @@ class ConfigManager:
             # 평면 구조로 전달될 수 있는 설정을 중첩 구조로 변환
             nested_config = self._extract_nested_config(new_config)
 
+            # 손절/익절 값 검증 (입력값 기준)
+            if (
+                'stop_loss' in new_config and 'take_profit' in new_config and
+                new_config.get('stop_loss_enabled', True) and
+                new_config.get('take_profit_enabled', True)
+            ):
+                if new_config['stop_loss'] > new_config['take_profit']:
+                    raise ValueError("손절 임계값은 익절 임계값보다 작아야 합니다.")
+
             # 기존 설정과 병합하여 완전한 구성 생성
             def deep_merge(src, updates):
                 for k, v in updates.items():
@@ -390,4 +407,14 @@ class ConfigManager:
             if 'investment_amount' in trading and trading['investment_amount'] <= 0:
                 raise ValueError("투자 금액은 0보다 커야 합니다.")
             if 'max_coins' in trading and trading['max_coins'] <= 0:
-                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.") 
+                raise ValueError("최대 보유 코인 수는 0보다 커야 합니다.")
+
+        # RSI 설정 검증
+        if 'signals' in config:
+            signals = config['signals']
+            rsi_common = signals.get('common_conditions', {}).get('rsi', {})
+            if 'period' in rsi_common and rsi_common['period'] <= 0:
+                raise ValueError("RSI 기간은 0보다 커야 합니다.")
+
+
+
