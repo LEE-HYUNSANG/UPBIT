@@ -743,15 +743,18 @@ def handle_initial_data():
         monitored_coins = market_analyzer.get_monitored_coins()
         if monitored_coins:
             coin_data = []
-            for market in monitored_coins:
-                info = market_analyzer.get_market_info(market)
+            for coin in monitored_coins:
+                info = market_analyzer.get_market_info(coin['market'])
                 if info:
                     coin_data.append({
-                        'market': market,
+                        'market': coin['market'],
+                        'name': coin.get('name'),
                         'current_price': info.get('trade_price', 0),
                         'change_rate': info.get('signed_change_rate', 0) * 100,
                         'volume': info.get('acc_trade_volume_24h', 0),
-                        'status': '모니터링 중'
+                        'score': coin.get('score'),
+                        'threshold': coin.get('threshold'),
+                        'status': coin.get('status', '모니터링 중')
                     })
             
             emit('monitored_coins_update', {
