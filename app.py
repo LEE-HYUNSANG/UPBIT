@@ -205,7 +205,7 @@ def monitor_market():
 def handle_connect():
     """소켓 연결 이벤트 핸들러"""
     try:
-        logger.info('Client connected')
+        logger.debug('Client connected')
         emit('notification', {
             'type': 'success',
             'message': '서버에 연결되었습니다.'
@@ -247,7 +247,7 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     """클라이언트 연결 해제 시 호출됩니다."""
-    logger.info('Client disconnected')
+    logger.debug('Client disconnected')
 
 @socketio.on('settings_changed')
 def handle_settings_changed(settings):

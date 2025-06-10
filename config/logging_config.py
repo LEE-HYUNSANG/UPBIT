@@ -42,9 +42,12 @@ def setup_logging():
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
 
+    # suppress werkzeug request logs
+    logging.getLogger('werkzeug').setLevel(logging.WARNING)
+
     # 시작 로그
     logger.info('='*80)
     logger.info('Trading Bot Logger Initialized')
     logger.info('='*80)
 
-    return logger 
+    return logger
