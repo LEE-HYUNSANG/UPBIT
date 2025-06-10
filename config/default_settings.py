@@ -10,8 +10,8 @@ DEFAULT_SETTINGS = {
     "version": "1.0.0",
     "trading": {
         "enabled": True,
-        "investment_amount": 200000,
-        "max_coins": 5,
+        "investment_amount": 7000,
+        "max_coins": 7,
         "coin_selection": DEFAULT_COIN_SELECTION.copy()
     },
     "market_analysis": {
@@ -71,7 +71,7 @@ DEFAULT_SETTINGS = {
         "stochastic_enabled": True,
         "macd_weight": 1,
         "macd_enabled": True,
-        "score_threshold": 6,
+        "score_threshold": 5,
         # 코인별 점수 임계값
         "score_thresholds": {}
     },

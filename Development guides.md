@@ -944,8 +944,8 @@ MONITORING_INTERVAL=10
 ```json
 {
     "trading": {
-        "investment_amount": 10000,
-        "max_coins": 5,
+        "investment_amount": 7000,
+        "max_coins": 7,
         "min_price": 700,
         "max_price": 26666
     },

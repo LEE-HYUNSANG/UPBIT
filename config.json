@@ -2,8 +2,8 @@
     "version": "1.0.0",
     "trading": {
         "enabled": true,
-        "investment_amount": 200000,
-        "max_coins": 5,
+        "investment_amount": 7000,
+        "max_coins": 7,
         "coin_selection": {
             "min_price": 700,
             "max_price": 26666,
@@ -51,7 +51,7 @@
         "stochastic_enabled": true,
         "macd_weight": 1,
         "macd_enabled": true,
-        "score_threshold": 6,
+        "score_threshold": 5,
         "score_thresholds": {}
     },
     "buy_settings": {
@@ -103,8 +103,8 @@
         "trend_filter_on": true,
         "min_slope": 0.1
     },
-    "investment_amount": 200000,
-    "max_coins": 3,
+    "investment_amount": 7000,
+    "max_coins": 7,
     "rsi_enabled": true,
     "rsi_period": 14,
     "bollinger_enabled": false,
