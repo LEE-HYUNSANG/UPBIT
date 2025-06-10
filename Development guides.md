@@ -1065,7 +1065,7 @@ MONITORING_INTERVAL=10
         "investment_amount": 10000,
         "max_coins": 5,
         "min_price": 700,
-        "max_price": 23000
+        "max_price": 26666
     },
     "signals": {
         "buy_conditions": {...},

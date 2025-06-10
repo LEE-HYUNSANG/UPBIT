@@ -23,7 +23,7 @@ DEFAULT_SETTINGS = {
         "base_amount": 10000,
         "max_positions": 5,
         "min_price": 700,
-        "max_price": 2666,
+        "max_price": 26666,
         "min_volume_24h": 1400000000,
         "min_volume_1h": 100000000,
         "min_tick_ratio": 0.04,

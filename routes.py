@@ -221,7 +221,7 @@ def get_monitored():
         # 설정에서 필터링 조건 가져오기
         settings = load_settings()
         min_price = settings.get('min_price', 500)
-        max_price = settings.get('max_price', 23000)
+        max_price = settings.get('max_price', 26666)
         
         # 모든 KRW 마켓 정보 조회
         markets = upbit.get_monitored_markets()

@@ -6,7 +6,7 @@
         "max_coins": 8,
         "coin_selection": {
             "min_price": 700.0,
-            "max_price": 2666.0,
+            "max_price": 26666.0,
             "min_volume_24h": 1400000000,
             "min_volume_1h": 100000000,
             "min_tick_ratio": 0.04,
@@ -152,7 +152,7 @@
         "max_positions": 5,
         "risk_per_trade": 0.01,
         "min_price": 700,
-        "max_price": 2666,
+        "max_price": 26666,
         "min_volume_24h": 1400000000,
         "min_volume_1h": 100000000,
         "min_tick_ratio": 0.04
