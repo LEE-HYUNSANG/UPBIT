@@ -88,7 +88,7 @@ class ConfigManager:
                 "max_coins": 5,
                 "coin_selection": {
                     "min_price": 100,
-                    "max_price": 2666,
+                    "max_price": 26666,
                     "min_volume_24h": 1400000000,
                     "min_volume_1h": 100000000,
                     "min_tick_ratio": 0.04,
@@ -249,7 +249,7 @@ class ConfigManager:
                 "max_coins": config.get("max_coins", 5),
                 "coin_selection": {
                     "min_price": config.get("min_price", 100),
-                    "max_price": config.get("max_price", 2666),
+                    "max_price": config.get("max_price", 26666),
                     "min_volume_24h": config.get("min_volume_24h", 1400000000),
                     "min_volume_1h": config.get("min_volume_1h", 100000000),
                     "min_tick_ratio": config.get("min_tick_ratio", 0.04)
