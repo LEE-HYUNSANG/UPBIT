@@ -251,7 +251,6 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>코인명</th>
                                         <th>코인 ID</th>
                                         <th>15분 추세</th>
                                         <th>골든크로스</th>
@@ -264,7 +263,7 @@
                                 </thead>
                                 <tbody id="monitoredCoinsTableBody">
                                     <tr>
-                                        <td colspan="9" class="text-center">모니터링 중인 코인이 없습니다.</td>
+                                        <td colspan="8" class="text-center">모니터링 중인 코인이 없습니다.</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -488,7 +487,6 @@
                     };
 
                     row.innerHTML = `
-                        <td>${coin.name || coin.market}</td>
                         <td>${coin.market}</td>
                         <td>${signalMark(indicators.trend_filter, values.ema50)}</td>
                         <td>${signalMark(indicators.golden_cross, values.sma5_slope)}</td>
@@ -506,7 +504,7 @@
                 });
             } else {
                 const row = document.createElement('tr');
-                row.innerHTML = '<td colspan="9" class="text-center">모니터링 중인 코인이 없습니다.</td>';
+                row.innerHTML = '<td colspan="8" class="text-center">모니터링 중인 코인이 없습니다.</td>';
                 tableBody.appendChild(row);
             }
         }
