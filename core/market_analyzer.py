@@ -534,8 +534,17 @@ class MarketAnalyzer:
     def start(self):
         """봇 시작"""
         if self.is_running:
-            logger.warning("봇이 이미 실행 중입니다.")
-            return False
+            # 실행 플래그는 True지만 백그라운드 스레드가 종료되어 있는 경우가 있습
+            # 니다. (예: 예외로 인해 스레드가 중단되었으나 플래그가 갱신되지 않음)
+            if not self.analysis_thread or not self.analysis_thread.is_alive():
+                logger.warning("실행 상태 플래그가 True이나 스레드가 동작하지 않아 상태를 초기화합니다.")
+                self.is_running = False
+                self.stop_event.set()
+                if self.analysis_thread:
+                    self.analysis_thread.join(timeout=2.0)
+            else:
+                logger.warning("봇이 이미 실행 중입니다.")
+                return False
 
         try:
             # API 키 확인
