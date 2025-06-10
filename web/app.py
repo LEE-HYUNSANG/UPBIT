@@ -1,8 +1,9 @@
+import os
+os.environ.setdefault("EVENTLET_NO_GREENDNS", "yes")  # dnspython 호환성 문제 방지
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit
 import json
 import sys
-import os
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -20,6 +21,10 @@ from core.constants import DEFAULT_COIN_SELECTION
 # .env 파일 로드
 load_dotenv()
 
+# 테스트 환경을 위한 기본 API 키 값 설정
+os.environ.setdefault("UPBIT_ACCESS_KEY", "test")
+os.environ.setdefault("UPBIT_SECRET_KEY", "test")
+
 app = Flask(__name__, 
     template_folder='../templates',
     static_folder='../static'
@@ -30,7 +35,7 @@ app.config['SECRET_KEY'] = 'secret!'
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode=None,  # 자동으로 최적의 모드 선택
+    async_mode="threading",  # eventlet을 사용하지 않음
     logger=True,
     engineio_logger=True
 )
@@ -208,20 +213,26 @@ def validate_config(config):
         # 매수/매도 조건 검증
         for condition_type in ['buy_conditions', 'sell_conditions']:
             conditions = signals.get(condition_type, {})
-            if not isinstance(conditions.get('enabled'), bool):
-                validation_errors.append(f"[오류] {condition_type}.enabled는 boolean이어야 합니다.")
+            if not isinstance(conditions.get('enabled'), (bool, dict)):
+                validation_errors.append(
+                    f"[오류] {condition_type}.enabled는 boolean 또는 dict이어야 합니다."
+                )
                 
             # RSI 설정 검증
             rsi = conditions.get('rsi', {})
-            if rsi.get('enabled', False):
+            if rsi.get('enabled', False) and 'threshold' in rsi:
                 if not isinstance(rsi.get('threshold'), (int, float)):
-                    validation_errors.append(f"[오류] {condition_type}.rsi.threshold는 숫자여야 합니다.")
+                    validation_errors.append(
+                        f"[오류] {condition_type}.rsi.threshold는 숫자여야 합니다."
+                    )
                     
             # 볼린저 밴드 설정 검증
             bollinger = conditions.get('bollinger', {})
-            if bollinger.get('enabled', False):
+            if bollinger.get('enabled', False) and 'threshold' in bollinger:
                 if not isinstance(bollinger.get('threshold'), (int, float)):
-                    validation_errors.append(f"[오류] {condition_type}.bollinger.threshold는 숫자여야 합니다.")
+                    validation_errors.append(
+                        f"[오류] {condition_type}.bollinger.threshold는 숫자여야 합니다."
+                    )
 
         # 알림 설정 검증
         notifications = config.get('notifications', {})
@@ -947,8 +958,7 @@ if __name__ == '__main__':
             debug=True,
             host='0.0.0.0',
             port=5000,
-            use_reloader=False,
-            allow_unsafe_werkzeug=True  # 개발 환경에서만 사용
+            use_reloader=False
         )
     except Exception as e:
         logger.error(f"서버 시작 중 오류 발생: {str(e)}") 
