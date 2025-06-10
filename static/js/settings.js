@@ -93,6 +93,26 @@ const recommendedSettings = {
             daily_summary: true,
             signal: true
         }
+    },
+    buy_score: {
+        strength_weight: 2,
+        strength_threshold: 130,
+        volume_spike_weight: 2,
+        volume_spike_threshold: 200,
+        orderbook_weight: 1,
+        orderbook_threshold: 130,
+        momentum_weight: 1,
+        momentum_threshold: 0.3,
+        near_high_weight: 1,
+        near_high_threshold: -1,
+        trend_reversal_weight: 1,
+        williams_weight: 1,
+        williams_enabled: true,
+        stochastic_weight: 1,
+        stochastic_enabled: true,
+        macd_weight: 1,
+        macd_enabled: true,
+        score_threshold: 6
     }
 };
 
@@ -285,6 +305,26 @@ function updateFormValues(settings) {
     setValue('notifications.system.error', notifications.system?.error);
     setValue('notifications.system.daily_summary', notifications.system?.daily_summary);
     setValue('notifications.system.signal', notifications.system?.signal);
+
+    const score = settings.buy_score || {};
+    setValue('buy_score.strength_weight', score.strength_weight);
+    setValue('buy_score.strength_threshold', score.strength_threshold);
+    setValue('buy_score.volume_spike_weight', score.volume_spike_weight);
+    setValue('buy_score.volume_spike_threshold', score.volume_spike_threshold);
+    setValue('buy_score.orderbook_weight', score.orderbook_weight);
+    setValue('buy_score.orderbook_threshold', score.orderbook_threshold);
+    setValue('buy_score.momentum_weight', score.momentum_weight);
+    setValue('buy_score.momentum_threshold', score.momentum_threshold);
+    setValue('buy_score.near_high_weight', score.near_high_weight);
+    setValue('buy_score.near_high_threshold', score.near_high_threshold);
+    setValue('buy_score.trend_reversal_weight', score.trend_reversal_weight);
+    setValue('buy_score.williams_weight', score.williams_weight);
+    document.getElementById('buy_score.williams_enabled').value = String(score.williams_enabled);
+    setValue('buy_score.stochastic_weight', score.stochastic_weight);
+    document.getElementById('buy_score.stochastic_enabled').value = String(score.stochastic_enabled);
+    setValue('buy_score.macd_weight', score.macd_weight);
+    document.getElementById('buy_score.macd_enabled').value = String(score.macd_enabled);
+    setValue('buy_score.score_threshold', score.score_threshold);
 }
 
 // 설정 저장
@@ -369,6 +409,26 @@ function saveSettings() {
                 daily_summary: getBooleanValue('notifications.system.daily_summary'),
                 signal: getBooleanValue('notifications.system.signal')
             }
+        },
+        buy_score: {
+            strength_weight: getNumberValue('buy_score.strength_weight'),
+            strength_threshold: getNumberValue('buy_score.strength_threshold'),
+            volume_spike_weight: getNumberValue('buy_score.volume_spike_weight'),
+            volume_spike_threshold: getNumberValue('buy_score.volume_spike_threshold'),
+            orderbook_weight: getNumberValue('buy_score.orderbook_weight'),
+            orderbook_threshold: getNumberValue('buy_score.orderbook_threshold'),
+            momentum_weight: getNumberValue('buy_score.momentum_weight'),
+            momentum_threshold: getNumberValue('buy_score.momentum_threshold'),
+            near_high_weight: getNumberValue('buy_score.near_high_weight'),
+            near_high_threshold: getNumberValue('buy_score.near_high_threshold'),
+            trend_reversal_weight: getNumberValue('buy_score.trend_reversal_weight'),
+            williams_weight: getNumberValue('buy_score.williams_weight'),
+            williams_enabled: document.getElementById('buy_score.williams_enabled').value === 'true',
+            stochastic_weight: getNumberValue('buy_score.stochastic_weight'),
+            stochastic_enabled: document.getElementById('buy_score.stochastic_enabled').value === 'true',
+            macd_weight: getNumberValue('buy_score.macd_weight'),
+            macd_enabled: document.getElementById('buy_score.macd_enabled').value === 'true',
+            score_threshold: getNumberValue('buy_score.score_threshold')
         }
     };
 
