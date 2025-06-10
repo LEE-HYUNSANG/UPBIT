@@ -467,11 +467,27 @@ class TelegramNotifier:
     def send_message_sync(self, message: str):
         """동기 방식으로 메시지 전송"""
         try:
-            self.bot.send_message(
-                chat_id=self.chat_id,
-                text=message,
-                parse_mode='HTML'
-            )
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = None
+
+            if loop and loop.is_running():
+                loop.create_task(
+                    self.bot.send_message(
+                        chat_id=self.chat_id,
+                        text=message,
+                        parse_mode='HTML'
+                    )
+                )
+            else:
+                asyncio.run(
+                    self.bot.send_message(
+                        chat_id=self.chat_id,
+                        text=message,
+                        parse_mode='HTML'
+                    )
+                )
             logger.info(f"텔레그램 메시지 전송 성공: {message[:50]}...")
             return True
         except TelegramError as e:
