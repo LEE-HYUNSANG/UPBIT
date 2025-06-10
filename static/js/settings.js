@@ -10,91 +10,18 @@ const alertMessage = document.getElementById('alertMessage');
 let excludedCoins = [];
 let currentSettings = {};
 
-// 추천 설정값
-const recommendedSettings = {
-    trading: {
-        enabled: false,  // 실제 매매 실행 여부
-        investment_amount: 200000,    // 기본 투자금액
-        max_coins: 5,               // 동시 보유 최대 5개 코인
-        coin_selection: {
-            // 기본값 업데이트
-            min_price: 700,         // 최소 가격 (원)
-            max_price: 26666,       // 최대 가격 (원)
-            min_volume_24h: 1400000000,
-            min_volume_1h: 10000000,
-            min_tick_ratio: 0.035,
-            excluded_coins: []
-        }
-    },
-    signals: {
-        enabled: false,  // 시장 자동감지 OFF
-        buy_conditions: {
-            bull: {
-                rsi: 40,
-                sigma: 1.8,
-                vol_prev: 1.5,
-                vol_ma: 1.2,
-                slope: 0.12
-            },
-            range: {
-                rsi: 35,
-                sigma: 2.0,
-                vol_prev: 2.0,
-                vol_ma: 1.5,
-                slope: 0.10
-            },
-            bear: {
-                rsi: 30,
-                sigma: 2.2,
-                vol_prev: 2.5,
-                vol_ma: 1.8,
-                slope: 0.08
-            },
-            enabled: {
-                trend_filter: true,    // 15분 추세 필터
-                golden_cross: true,    // SMA 5/20 골든크로스
-                rsi: true,            // RSI 과매도 2캔들 연속
-                bollinger: true,       // 볼린저 밴드 하단선 이탈
-                volume_surge: true     // 거래량 급증
-            }
-        },
-    },
-    notifications: {
-        trade: {
-            start: true,
-            complete: true,
-            profit_loss: true
-        },
-        system: {
-            error: true,
-            daily_summary: true,
-            signal: true
-        }
-    },
-    buy_score: {
-        strength_weight: 2,
-        strength_threshold_low: 110,
-        strength_threshold: 130,
-        volume_spike_weight: 2,
-        volume_spike_threshold_low: 150,
-        volume_spike_threshold: 200,
-        orderbook_weight: 1,
-        orderbook_threshold: 130,
-        momentum_weight: 1,
-        momentum_threshold: 0.3,
-        near_high_weight: 1,
-        near_high_threshold: -1,
-        trend_reversal_weight: 1,
-        williams_weight: 1,
-        williams_enabled: true,
-        stochastic_weight: 1,
-        stochastic_enabled: true,
-        macd_weight: 1,
-        macd_enabled: true,
-        score_threshold: 6,
-        score_thresholds: {}
+let recommendedSettings = {};
+
+async function loadRecommendedSettings() {
+    try {
+        const res = await fetch('/api/default_settings');
+        const data = await res.json();
+        recommendedSettings = data.data || data;
+    } catch (e) {
+        console.error('기본 설정 로드 실패:', e);
+        recommendedSettings = {};
     }
-};
+}
 
 // Socket.IO 초기화
 const socket = io();
@@ -104,8 +31,8 @@ const excludedCoinInput = document.getElementById('excluded-coin-input');
 const excludedCoinsList = document.getElementById('excluded-coins-list');
 
 // 페이지 로드 시 실행
-document.addEventListener('DOMContentLoaded', () => {
-    // 초기 설정 로드
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadRecommendedSettings();
     loadSettings();
 
     // 제외 코인 입력 이벤트

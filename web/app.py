@@ -327,6 +327,15 @@ def get_settings():
             'error': str(e)
         }), 500
 
+@app.route('/api/default_settings', methods=['GET'])
+def get_default_settings():
+    """기본 설정 반환 API"""
+    try:
+        return jsonify({'success': True, 'data': get_default_config()})
+    except Exception as e:
+        logger.error(f"기본 설정 조회 오류: {str(e)}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 @app.route('/api/settings', methods=['POST'])
 def save_settings():
     """설정 저장 API"""
