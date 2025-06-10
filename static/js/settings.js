@@ -21,7 +21,7 @@ const recommendedSettings = {
             min_price: 700,         // 최소 가격 (원)
             max_price: 26666,       // 최대 가격 (원)
             min_volume_24h: 1400000000,
-            min_volume_1h: 20000000,
+            min_volume_1h: 10000000,
             min_tick_ratio: 0.035,
             excluded_coins: []
         }
