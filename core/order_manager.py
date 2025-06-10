@@ -103,9 +103,10 @@ class OrderManager:
                     ord_type='price'
                 )
 
-            if not order:
-                logger.error(f"{market}: 매수 주문 실패")
-                return False, None
+            if not order or ('error' in order):
+                error_detail = order.get('error') if isinstance(order, dict) else 'API 요청 실패'
+                logger.error(f"{market}: 매수 주문 실패 - {error_detail}")
+                return False, {'error': error_detail}
 
             # 주문 완료 대기
             success, final_order = self._wait_for_order(order['uuid'], self.order_timeout)
@@ -122,9 +123,9 @@ class OrderManager:
                     ord_type='price'
                 )
                 
-                if market_order:
+                if market_order and ('error' not in market_order):
                     success, final_order = self._wait_for_order(market_order['uuid'], 10)
-
+                
             return success, final_order
 
         except Exception as e:
@@ -189,9 +190,10 @@ class OrderManager:
                     ord_type='market'
                 )
 
-            if not order:
-                logger.error(f"{market}: 매도 주문 실패")
-                return False, None
+            if not order or ('error' in order):
+                error_detail = order.get('error') if isinstance(order, dict) else 'API 요청 실패'
+                logger.error(f"{market}: 매도 주문 실패 - {error_detail}")
+                return False, {'error': error_detail}
 
             # 주문 완료 대기
             success, final_order = self._wait_for_order(order['uuid'], self.order_timeout)
@@ -208,7 +210,7 @@ class OrderManager:
                     ord_type='market'
                 )
                 
-                if market_order:
+                if market_order and ('error' not in market_order):
                     success, final_order = self._wait_for_order(market_order['uuid'], 10)
 
             return success, final_order
@@ -246,9 +248,10 @@ class OrderManager:
                 ord_type='limit'
             )
 
-            if not order:
-                logger.error(f"{market}: 매수 주문 실패")
-                return False, None
+            if not order or ('error' in order):
+                error_detail = order.get('error') if isinstance(order, dict) else 'API 요청 실패'
+                logger.error(f"{market}: 매수 주문 실패 - {error_detail}")
+                return False, {'error': error_detail}
 
             success, final_order = self._wait_for_order(order['uuid'], timeout)
             if not success:
@@ -268,9 +271,10 @@ class OrderManager:
                 price=price,
                 ord_type='limit'
             )
-            if not order:
-                logger.error(f"{market}: 매도 주문 실패")
-                return False, None
+            if not order or ('error' in order):
+                error_detail = order.get('error') if isinstance(order, dict) else 'API 요청 실패'
+                logger.error(f"{market}: 매도 주문 실패 - {error_detail}")
+                return False, {'error': error_detail}
             success, final_order = self._wait_for_order(order['uuid'], self.order_timeout)
             if not success:
                 self.api.cancel_order(order['uuid'])
@@ -297,4 +301,4 @@ class OrderManager:
             return True, order
         if second_wait > 0:
             return self._place_limit_order(market, amount, second_type, second_wait)
-        return False, None
+        return False, order

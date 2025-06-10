@@ -1345,7 +1345,10 @@ class MarketAnalyzer:
                         'order_details': order
                     }
                 }
-            error_msg = f"{market} 매수 주문 실패"
+            error_detail = ''
+            if isinstance(order, dict) and 'error' in order:
+                error_detail = f" - {order['error']}"
+            error_msg = f"{market} 매수 주문 실패{error_detail}"
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
         except Exception as e:
