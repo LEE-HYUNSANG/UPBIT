@@ -117,6 +117,8 @@ class MarketAnalyzer:
         
         # 시그널 상태 저장
         self.signals = {}
+        # 거래 중지 등으로 조회 실패한 마켓 기록
+        self.invalid_markets = set()
 
     def register_socketio(self, socketio):
         """웹소켓 이벤트 핸들러 등록"""
@@ -353,6 +355,21 @@ class MarketAnalyzer:
             return response.json()
             
         except requests.exceptions.HTTPError as e:
+            if (
+                e.response is not None
+                and e.response.status_code == 404
+                and "Code not found" in e.response.text
+            ):
+                markets_param = None
+                if isinstance(params, dict):
+                    markets_param = params.get("markets")
+                if markets_param:
+                    for m in str(markets_param).split(','):
+                        self.invalid_markets.add(m.strip())
+                logger.warning(
+                    f"존재하지 않는 마켓 요청: {markets_param} (endpoint={endpoint})"
+                )
+                return None
             logger.error(
                 f"API HTTP 오류: {e.response.status_code} - {e.response.text} "
                 f"(endpoint={endpoint}, params={params})"
@@ -368,10 +385,15 @@ class MarketAnalyzer:
     def get_market_info(self, market: str) -> Dict:
         """시장 정보 조회"""
         try:
+            if market in self.invalid_markets:
+                return None
+
             params = {'markets': market}
             data = self._send_request('GET', '/v1/ticker', params)
             if isinstance(data, list) and len(data) > 0:
                 return data[0]
+            if data is None:
+                self.invalid_markets.add(market)
             return None
         except Exception as e:
             logger.error(f"시장 정보 조회 실패: {str(e)}")
@@ -520,6 +542,8 @@ class MarketAnalyzer:
             for account in accounts:
                 if account['currency'] != 'KRW' and float(account['balance']) > 0:
                     market = f"KRW-{account['currency']}"
+                    if market in self.invalid_markets:
+                        continue
                     # 현재가 조회
                     ticker = self.get_market_info(market)
                     if ticker:
@@ -564,6 +588,8 @@ class MarketAnalyzer:
                     krw_balance = float(account['balance'])
                 else:
                     market = f"KRW-{account['currency']}"
+                    if market in self.invalid_markets:
+                        continue
                     ticker = self.get_market_info(market)
                     if ticker:
                         balance = float(account['balance'])
