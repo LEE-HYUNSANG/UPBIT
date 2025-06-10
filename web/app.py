@@ -1,4 +1,3 @@
-import os
 # Eventlet가 설치되어 있어도 greendns 모듈이 로드되지 않도록 강제
 os.environ["EVENTLET_NO_GREENDNS"] = "yes"
 # socketio가 자동으로 eventlet을 선택하지 않도록 스레드 모드 지정
