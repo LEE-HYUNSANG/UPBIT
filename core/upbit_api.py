@@ -18,6 +18,7 @@ import hashlib
 import requests
 import logging
 import numpy as np
+import time
 from urllib.parse import urlencode
 from dotenv import load_dotenv
 from pathlib import Path
@@ -337,15 +338,34 @@ class UpbitAPI:
             self.logger.error(f"OHLCV 조회 실패: {str(e)}")
             return None
 
-    def get_orderbook(self, market: str):
-        """호가 정보 조회"""
-        try:
-            import pyupbit
-            orderbook = pyupbit.get_orderbook(ticker=market)
-            return orderbook[0] if orderbook else None
-        except Exception as e:
-            self.logger.error(f"호가 조회 실패: {str(e)}")
-            return None
+    def get_orderbook(self, market: str, retries: int = 3, delay: float = 0.1):
+        """호가 정보 조회
+
+        Args:
+            market (str): 마켓 코드
+            retries (int): 재시도 횟수
+            delay (float): 재시도 간격(초)
+
+        Returns:
+            Optional[Dict]: 호가 정보
+        """
+        last_error = None
+        for attempt in range(1, retries + 1):
+            try:
+                import pyupbit
+                orderbook = pyupbit.get_orderbook(ticker=market)
+                if orderbook:
+                    return orderbook[0]
+            except Exception as e:
+                last_error = e
+                self.logger.error(f"호가 조회 실패: {str(e)}")
+            time.sleep(delay)
+
+        if last_error:
+            self.logger.error(
+                f"호가 조회 실패: 재시도 {retries}회 후 포기 - {str(last_error)}"
+            )
+        return None
 
     def get_recent_trades(self, market: str, count: int = 100):
         """최근 체결 내역 조회"""
