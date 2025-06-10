@@ -2,7 +2,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
 from core.upbit_api import UpbitAPI
-from ..utils.logger import TradingLogger
+from core.logger import TradingLogger
 
 class MarketData:
     def __init__(self, exchange: UpbitAPI, settings: Dict):

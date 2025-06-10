@@ -6,7 +6,7 @@ from core.upbit_api import UpbitAPI
 from core.order_manager import OrderManager
 from ..data.market_data import MarketData
 from ..strategies.one_min_strategy import OneMinStrategy
-from ..utils.logger import TradingLogger
+from core.logger import TradingLogger
 
 class TradingBot:
     def __init__(self, settings: Dict, access_key: str, secret_key: str):
