@@ -77,8 +77,6 @@ class MarketAnalyzer:
     def __init__(self, config_path: str = 'config.json'):
         """초기화"""
         self.config_path = config_path
-        self.buy_settings_path = str(Path(__file__).parent.parent / 'config' / 'buy_settings.json')
-        self.sell_settings_path = str(Path(__file__).parent.parent / 'config' / 'sell_settings.json')
         self.server_url = 'https://api.upbit.com'
         self.request_timeout = 10
         self.cache_duration = 900
@@ -833,7 +831,9 @@ class MarketAnalyzer:
                 'trading': self._prepare_trading_settings(settings),
                 'signals': self._prepare_signal_settings(settings),
                 'notifications': self._prepare_notification_settings(settings),
-                'buy_score': settings.get('buy_score', {})
+                'buy_score': settings.get('buy_score', {}),
+                'buy_settings': settings.get('buy_settings', {}),
+                'sell_settings': settings.get('sell_settings', {})
             }
 
             # 임시 파일에 저장
@@ -1455,54 +1455,30 @@ class MarketAnalyzer:
 
     def get_buy_settings(self) -> Dict:
         """매수 주문 설정 조회"""
-        try:
-            if os.path.exists(self.buy_settings_path):
-                with open(self.buy_settings_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.error(f"매수 설정 로드 실패: {e}")
-        return {}
+        return self.config.get('buy_settings', {})
 
     def get_sell_settings(self) -> Dict:
         """매도 주문 설정 조회"""
-        try:
-            if os.path.exists(self.sell_settings_path):
-                with open(self.sell_settings_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except Exception as e:
-            logger.error(f"매도 설정 로드 실패: {e}")
-        return {}
+        return self.config.get('sell_settings', {})
 
     def save_buy_settings(self, settings: Dict) -> bool:
         """매수 주문 설정 저장"""
         try:
-            tmp = self.buy_settings_path + '.tmp'
-            with open(tmp, 'w', encoding='utf-8') as f:
-                json.dump(settings, f, indent=4, ensure_ascii=False)
-            os.replace(tmp, self.buy_settings_path)
+            self.config['buy_settings'] = settings
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
             logger.error(f"매수 설정 저장 실패: {e}")
-            if os.path.exists(tmp):
-                try:
-                    os.remove(tmp)
-                except Exception:
-                    pass
             return False
 
     def save_sell_settings(self, settings: Dict) -> bool:
         """매도 주문 설정 저장"""
         try:
-            tmp = self.sell_settings_path + '.tmp'
-            with open(tmp, 'w', encoding='utf-8') as f:
-                json.dump(settings, f, indent=4, ensure_ascii=False)
-            os.replace(tmp, self.sell_settings_path)
+            self.config['sell_settings'] = settings
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=4, ensure_ascii=False)
             return True
         except Exception as e:
             logger.error(f"매도 설정 저장 실패: {e}")
-            if os.path.exists(tmp):
-                try:
-                    os.remove(tmp)
-                except Exception:
-                    pass
             return False
