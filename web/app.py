@@ -814,6 +814,33 @@ def background_updates():
             logger.error(f"백그라운드 업데이트 중 오류 발생: {str(e)}")
             time.sleep(5)  # 오류 발생 시 5초 대기 후 재시도
 
+@socketio.on('market_buy')
+def handle_market_buy(data):
+    """개별 코인 시장가 매수"""
+    try:
+        market = data['market']
+        logger.info(f"코인 매수 요청: {market}")
+        result = market_analyzer.market_buy(market)
+
+        if result['success']:
+            emit('market_buy_result', {
+                'success': True,
+                'message': f"{market} 매수 주문이 완료되었습니다.",
+                'data': result.get('data')
+            })
+            # 보유 코인 정보 업데이트
+            holdings = market_analyzer.get_holdings()
+            emit('holdings_update', {'holdings': list(holdings.values())})
+        else:
+            emit('market_buy_result', {
+                'success': False,
+                'error': result.get('error', '매수 실패')
+            })
+    except Exception as e:
+        error_msg = f"매수 처리 중 오류 발생: {str(e)}"
+        logger.error(error_msg)
+        emit('market_buy_result', {'success': False, 'error': error_msg})
+
 @socketio.on('sell_coin')
 def handle_sell_coin(data):
     """개별 코인 시장가 매도"""
