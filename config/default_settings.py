@@ -44,26 +44,6 @@ DEFAULT_SETTINGS = {
                 "confidence_threshold": 0.7
             }
         },
-        "parameters": {
-            "bull": {
-                "rsi_threshold": 70,
-                "volume_multiplier": 1.5,
-                "profit_target": 2.0,
-                "stop_loss": 1.0
-            },
-            "bear": {
-                "rsi_threshold": 30,
-                "volume_multiplier": 2.0,
-                "profit_target": 1.5,
-                "stop_loss": 1.5
-            },
-            "neutral": {
-                "rsi_threshold": 50,
-                "volume_multiplier": 1.8,
-                "profit_target": 1.8,
-                "stop_loss": 1.2
-            }
-        },
         "weights": {
             "trend": 0.4,
             "volatility": 0.2,
@@ -114,7 +94,7 @@ DEFAULT_SETTINGS = {
             },
             "take_profit": {
                 "enabled": True,
-                "threshold": 2.0,
+                "threshold": 5.0,
                 "trailing_profit": 1.0
             },
             "dead_cross": {
