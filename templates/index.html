@@ -155,7 +155,7 @@
                                 <span class="fw-bold">상태:</span>
                                 <span id="botStatus" class="badge bg-secondary ms-2">중지됨</span>
                             </div>
-                            <button id="toggleBot" class="btn btn-secondary" disabled>시작</button>
+                            <button id="toggleBot" class="btn btn-secondary">시작</button>
                         </div>
                         <div class="market-status">
                             <div class="mb-2">
@@ -402,9 +402,9 @@
                 statusBadge.textContent = message || '중지됨';
             }
 
-            // 버튼은 항상 비활성화된 회색 상태로 유지합니다.
-            toggleButton.className = 'btn btn-secondary';
-            toggleButton.disabled = true;
+            toggleButton.className = `btn ${status ? 'btn-danger' : 'btn-primary'}`;
+            toggleButton.textContent = status ? '중지' : '시작';
+            toggleButton.disabled = false;
         }
 
         // 보유 코인 테이블 업데이트 함수
@@ -504,8 +504,14 @@
         // 페이지 로드 시 Socket.IO 초기화
         document.addEventListener('DOMContentLoaded', () => {
             initializeSocket();
-            
-            // 시작/중지 버튼은 비활성화되어 있으므로 이벤트 리스너를 등록하지 않습니다.
+
+            const toggleButton = document.getElementById('toggleBot');
+            if (toggleButton) {
+                toggleButton.addEventListener('click', () => {
+                    const action = toggleButton.textContent.trim() === '시작' ? 'start_bot' : 'stop_bot';
+                    socket.emit(action);
+                });
+            }
 
             // 페이지 로드 시 초기 데이터 요청
             socket.emit('request_initial_data');
