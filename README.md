@@ -75,6 +75,8 @@ pip install -r requirements.txt
 ```env
 UPBIT_ACCESS_KEY=your_access_key
 UPBIT_SECRET_KEY=your_secret_key
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
 ```
 실제 키로 교체한 후 저장하세요.
 
