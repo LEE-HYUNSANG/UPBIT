@@ -351,6 +351,17 @@
                 updateMonitoredCoinsTable(data.coins);
             });
 
+            socket.on('market_analysis', (data) => {
+                console.log('Market analysis update:', data);
+                const condition = data.market_condition || '-';
+                const confidence = data.confidence ? `${(data.confidence * 100).toFixed(2)}%` : '-';
+                const timestamp = data.timestamp || '-';
+
+                document.getElementById('marketCondition').textContent = condition;
+                document.getElementById('marketConfidence').textContent = confidence;
+                document.getElementById('lastUpdate').textContent = timestamp;
+            });
+
             socket.on('market_buy_result', (data) => {
                 if (data.success) {
                     showNotification(data.message, 'success');
