@@ -848,9 +848,6 @@ def handle_market_buy(data):
         result = market_analyzer.buy_with_settings(market)
 
         if result['success']:
-            order_details = result.get('data', {}).get('order_details')
-            if order_details:
-                market_analyzer.place_pre_sell(market, order_details)
             emit('market_buy_result', {
                 'success': True,
                 'message': f"{market} 매수 주문이 완료되었습니다.",

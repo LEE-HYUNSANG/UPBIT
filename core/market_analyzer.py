@@ -752,9 +752,6 @@ class MarketAnalyzer:
                         if result.get('success'):
                             self.auto_bought.add(coin['market'])
                             logger.info(f"{coin['market']} 자동 매수 성공")
-                            order = result.get('data', {}).get('order_details')
-                            if order:
-                                self._place_pre_sell(coin['market'], order)
                         else:
                             logger.error(
                                 f"{coin['market']} 자동 매수 실패: {result.get('error')}"
@@ -1169,6 +1166,7 @@ class MarketAnalyzer:
             settings = self.get_buy_settings() or DEFAULT_BUY_SETTINGS.copy()
             success, order = self.order_manager.buy_with_settings(market, settings)
             if success and order:
+                self._place_pre_sell(market, order)
                 return {
                     'success': True,
                     'data': {
