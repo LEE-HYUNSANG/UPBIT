@@ -78,6 +78,7 @@ UPBIT_SECRET_KEY=your_secret_key
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 LOG_LEVEL=INFO
+TELEGRAM_LOG_LEVEL=ERROR
 ```
 실제 키로 교체한 후 저장하세요.
 
