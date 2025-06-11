@@ -1197,6 +1197,51 @@ class MarketAnalyzer:
             logger.error(error_msg)
             return {'success': False, 'error': error_msg}
 
+    def sell_market_order(self, market: str) -> Dict:
+        """시장가 매도 후 모니터링 업데이트"""
+        try:
+            holdings = self.get_holdings()
+            info = holdings.get(market)
+            if not info:
+                return {'success': False, 'error': '보유 수량 없음'}
+
+            volume = info['balance']
+            order = self.api.sell_market_order(market, volume)
+            if order:
+                try:
+                    monitoring_coin.remove_market(market)
+                except Exception:
+                    pass
+                self.open_positions = [p for p in self.open_positions if p['market'] != market]
+                return {'success': True, 'data': {'order_details': order}}
+            return {'success': False, 'error': '매도 주문 실패'}
+        except Exception as e:
+            logger.error(f"시장가 매도 중 오류 발생: {str(e)}")
+            return {'success': False, 'error': str(e)}
+
+    def sell_all_market_order(self) -> Dict:
+        """보유한 모든 코인 시장가 매도"""
+        try:
+            holdings = self.get_holdings()
+            results = {}
+            success = True
+            for market, info in holdings.items():
+                volume = info['balance']
+                order = self.api.sell_market_order(market, volume)
+                if order:
+                    results[market] = order
+                    try:
+                        monitoring_coin.remove_market(market)
+                    except Exception:
+                        pass
+                    self.open_positions = [p for p in self.open_positions if p['market'] != market]
+                else:
+                    success = False
+            return {'success': success, 'data': results} if success else {'success': False, 'error': '매도 실패', 'data': results}
+        except Exception as e:
+            logger.error(f"전체 시장가 매도 중 오류 발생: {str(e)}")
+            return {'success': False, 'error': str(e)}
+
     def _place_pre_sell(self, market: str, buy_order: Dict) -> None:
         """매수 후 선매도 주문을 실행"""
         try:
