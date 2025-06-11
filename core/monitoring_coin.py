@@ -46,7 +46,6 @@ def get_monitoring_coins(min_value: float = 5000) -> Dict[str, Dict]:
         if info.get('amount', 0) >= min_value
     }
 
-
 def sync_holdings(holdings: Dict[str, Dict], min_value: float = 5000) -> None:
     """Ensure monitoring file contains all holdings."""
     data = _load()
