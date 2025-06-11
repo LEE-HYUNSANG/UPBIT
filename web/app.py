@@ -1,4 +1,8 @@
 import os  # 사용 전 반드시 os 모듈을 임포트한다
+import sys
+
+# 프로젝트 루트 경로를 sys.path에 추가하여 모듈 임포트 오류를 방지한다
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Eventlet greendns 로드로 인한 dnspython 충돌을 방지하기 위해
 os.environ.setdefault("EVENTLET_NO_GREENDNS", "yes")
@@ -10,14 +14,11 @@ from flask_socketio import SocketIO, emit
 import flask.cli
 import click
 import json
-import sys
 from datetime import datetime
 import logging
-import os
 from config.logging_config import setup_logging
 from pathlib import Path
 from dotenv import load_dotenv
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.market_analyzer import MarketAnalyzer
 from core.config_manager import ConfigManager
