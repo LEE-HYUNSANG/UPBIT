@@ -48,8 +48,11 @@ class TradingLogger:
         # 텔레그램 알림 초기화 시도
         try:
             self.telegram = TelegramNotifier()
-        except Exception:
+        except Exception as e:
             self.telegram = None
+            self.logger.error(
+                f"Telegram notifier init failed: {e}", exc_info=True
+            )
         
     def _setup_logger(self) -> logging.Logger:
         """
