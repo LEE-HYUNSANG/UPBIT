@@ -47,6 +47,7 @@ from config.default_settings import (
 )
 from .order_manager import OrderManager
 from .upbit_api import UpbitAPI
+from . import monitoring_coin
 
 # 환경변수 로드
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
@@ -579,6 +580,11 @@ class MarketAnalyzer:
             logger.info(f"보유 코인 조회 완료: {len(holdings)}개")
             # 선매도 주문 상태 확인 및 누락 시 재설정
             self._verify_open_positions(holdings)
+            try:
+                monitoring_coin.sync_holdings(holdings)
+                self._verify_monitoring_pre_sell(holdings)
+            except Exception:
+                pass
             return holdings
         
         except Exception as e:
@@ -1166,6 +1172,12 @@ class MarketAnalyzer:
             settings = self.get_buy_settings() or DEFAULT_BUY_SETTINGS.copy()
             success, order = self.order_manager.buy_with_settings(market, settings)
             if success and order:
+                try:
+                    volume = safe_float(order.get('executed_volume'))
+                    price = safe_float(order.get('avg_price', order.get('price')))
+                    monitoring_coin.record_buy(market, volume * price, False)
+                except Exception:
+                    pass
                 return {
                     'success': True,
                     'data': {
@@ -1223,6 +1235,10 @@ class MarketAnalyzer:
             )
             if sell_success and sell_order:
                 logger.info(f"{market} 선매도 주문 완료 - uuid={sell_order['uuid']}")
+                try:
+                    monitoring_coin.update_pre_sell(market, True)
+                except Exception:
+                    pass
                 # 매수 가격별 선매도 주문 정보 저장 또는 갱신
                 updated = False
                 for pos in self.open_positions:
@@ -1273,6 +1289,21 @@ class MarketAnalyzer:
                     'executed_volume': volume,
                 }
                 self._place_pre_sell(market, fake_order)
+
+    def _verify_monitoring_pre_sell(self, holdings: Dict) -> None:
+        """Check monitoring file and place pre-sell if missing."""
+        for market, info in monitoring_coin.get_monitoring_coins().items():
+            if info.get('pre_sell'):
+                continue
+            holding = holdings.get(market)
+            if not holding:
+                continue
+            fake_order = {
+                'price': holding['avg_price'],
+                'avg_price': holding['avg_price'],
+                'executed_volume': holding['balance'],
+            }
+            self._place_pre_sell(market, fake_order)
 
     def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
         """캔들 데이터 조회"""
