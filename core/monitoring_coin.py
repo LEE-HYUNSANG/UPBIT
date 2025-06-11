@@ -37,6 +37,14 @@ def update_pre_sell(market: str, pre_sell: bool = True) -> None:
     _save(data)
 
 
+def remove_market(market: str) -> None:
+    """Remove a market from monitoring."""
+    data = _load()
+    if market in data:
+        del data[market]
+        _save(data)
+
+
 def get_monitoring_coins(min_value: float = 5000) -> Dict[str, Dict]:
     """Return monitoring coins excluding those below the min_value."""
     data = _load()
