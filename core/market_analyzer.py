@@ -38,6 +38,7 @@ import threading
 import time
 from collections import deque
 from functools import wraps
+from .constants import DEFAULT_COIN_SELECTION, MIN_HOLDING_VALUE
 import math
 from config.default_settings import (
     DEFAULT_SETTINGS,
@@ -127,6 +128,8 @@ class MarketAnalyzer:
         # 매수 가격별 선매도 주문 관리용 리스트
         # [{'market': str, 'entry_price': float, 'volume': float, 'sell_uuid': str}]
         self.open_positions = []
+        # 평가 금액이 일정 금액 미만인 코인은 보유 목록에서 제외
+        self.min_holding_value = MIN_HOLDING_VALUE
 
     def register_socketio(self, socketio):
         """웹소켓 이벤트 핸들러 등록"""
@@ -552,14 +555,19 @@ class MarketAnalyzer:
                         current_price = float(ticker['trade_price'])
                         avg_price = float(account['avg_buy_price'])
                         balance = float(account['balance'])
-                        
+                        total_value = balance * current_price
+                        min_value = getattr(self, 'min_holding_value', MIN_HOLDING_VALUE)
+
+                        if total_value < min_value:
+                            continue
+
                         holdings[market] = {
                             'market': market,
                             'currency': account['currency'],
                             'balance': balance,
                             'avg_price': avg_price,
                             'current_price': current_price,
-                            'total_value': balance * current_price,
+                            'total_value': total_value,
                             'profit_loss': ((current_price - avg_price) / avg_price) * 100,
                             'last_update': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         }
