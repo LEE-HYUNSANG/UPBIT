@@ -1,6 +1,7 @@
 import unittest
 import json
 import tempfile
+import os
 from unittest.mock import MagicMock, patch
 
 from core.market_analyzer import MarketAnalyzer
@@ -28,10 +29,7 @@ class TestMonitoringCoinSync(unittest.TestCase):
 
                 holdings = ma.get_holdings()
 
-                with open(path, 'r', encoding='utf-8') as f:
-                    data = json.load(f)
-                self.assertIn('KRW-UNI', data)
-                self.assertEqual(data['KRW-UNI']['market'], 'KRW-UNI')
+                self.assertFalse(os.path.exists(path))
                 self.assertIn('KRW-UNI', holdings)
 
     def test_removed_when_value_low(self):

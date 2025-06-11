@@ -61,19 +61,14 @@ def sync_holdings(holdings: Dict[str, Dict]) -> None:
     data = _load()
     changed = False
 
-    # Add missing holdings
-    for market in holdings.keys():
-        if market in EXCLUDED:
-            continue
-        if market not in data:
-            data[market] = {'market': market}
-            changed = True
-
-    # Remove markets no longer held
+    # Remove markets no longer held or excluded
     for market in list(data.keys()):
         if market not in holdings or market in EXCLUDED:
             del data[market]
             changed = True
+
+    # Do not create placeholder entries for new holdings. They will be
+    # recorded only after a trade occurs via ``record_trade``.
 
     if changed:
         _save(data)
