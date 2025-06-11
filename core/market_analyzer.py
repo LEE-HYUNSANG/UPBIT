@@ -1180,7 +1180,7 @@ class MarketAnalyzer:
                 logger.warning(f"{market} 매수 체결 수량이 없어 선매도 주문을 건너뜁니다.")
                 return
 
-            avg_price = float(buy_order['price']) / executed_volume
+            avg_price = float(buy_order.get('avg_price') or buy_order['price'])
             settings = self.get_sell_settings() or DEFAULT_SELL_SETTINGS.copy()
             tp_pct = float(settings.get('TP_PCT', 0))
             min_ticks = int(settings.get('MINIMUM_TICKS', 2))

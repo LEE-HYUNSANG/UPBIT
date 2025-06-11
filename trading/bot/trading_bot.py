@@ -143,7 +143,7 @@ class TradingBot:
                     if success and order_info:
                         executed_volume = float(order_info.get('executed_volume', 0))
                         if executed_volume:
-                            avg_price = float(order_info['price']) / executed_volume
+                            avg_price = float(order_info.get('avg_price') or order_info['price'])
 
                             tick = self._get_tick_size(avg_price)
                             tp_pct = float(self.sell_settings.get('TP_PCT', 0))
