@@ -3,10 +3,10 @@
 # 매수 기본 설정
 DEFAULT_BUY_SETTINGS = {
     "ENTRY_SIZE_INITIAL": 7000,
-    "LIMIT_WAIT_SEC_1": 30,
-    "1st_Bid_Price": "BID1+",
-    "LIMIT_WAIT_SEC_2": 0,
-    "2nd_Bid_Price": "ASK1",
+    "LIMIT_WAIT_SEC_1": 20,
+    "1st_Bid_Price": "BID1",
+    "LIMIT_WAIT_SEC_2": 20,
+    "2nd_Bid_Price": "BID1",
 }
 
 # 매도 기본 설정
