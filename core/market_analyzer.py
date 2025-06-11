@@ -47,6 +47,7 @@ from config.default_settings import (
 )
 from .order_manager import OrderManager
 from .upbit_api import UpbitAPI
+from . import monitoring_coin
 
 # 환경변수 로드
 dotenv_path = Path(__file__).resolve().parents[1] / '.env'
@@ -1166,6 +1167,12 @@ class MarketAnalyzer:
             settings = self.get_buy_settings() or DEFAULT_BUY_SETTINGS.copy()
             success, order = self.order_manager.buy_with_settings(market, settings)
             if success and order:
+                try:
+                    volume = safe_float(order.get('executed_volume'))
+                    price = safe_float(order.get('avg_price', order.get('price')))
+                    monitoring_coin.record_buy(market, volume * price, False)
+                except Exception:
+                    pass
                 return {
                     'success': True,
                     'data': {
@@ -1223,6 +1230,10 @@ class MarketAnalyzer:
             )
             if sell_success and sell_order:
                 logger.info(f"{market} 선매도 주문 완료 - uuid={sell_order['uuid']}")
+                try:
+                    monitoring_coin.update_pre_sell(market, True)
+                except Exception:
+                    pass
                 # 매수 가격별 선매도 주문 정보 저장 또는 갱신
                 updated = False
                 for pos in self.open_positions:
