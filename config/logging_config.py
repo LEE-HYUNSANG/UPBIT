@@ -2,6 +2,7 @@ import os
 import logging
 from concurrent_log_handler import ConcurrentRotatingFileHandler
 from datetime import datetime
+from core.telegram_log_handler import TelegramLogHandler
 
 def setup_logging():
     """공통 로깅 설정을 초기화한다."""
@@ -46,6 +47,17 @@ def setup_logging():
     # 핸들러 추가
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+
+    # 텔레그램 핸들러 (옵션)
+    bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+    chat_id = os.getenv('TELEGRAM_CHAT_ID')
+    if bot_token and chat_id:
+        telegram_level = os.getenv('TELEGRAM_LOG_LEVEL', 'ERROR').upper()
+        telegram_handler = TelegramLogHandler(
+            level=getattr(logging, telegram_level, logging.ERROR)
+        )
+        telegram_handler.setFormatter(formatter)
+        logger.addHandler(telegram_handler)
 
     # suppress noisy library logs
     logging.getLogger('werkzeug').setLevel(logging.WARNING)
