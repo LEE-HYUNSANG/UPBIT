@@ -46,3 +46,37 @@ def get_monitoring_coins(min_value: float = 5000) -> Dict[str, Dict]:
         if info.get('amount', 0) >= min_value
     }
 
+def sync_holdings(holdings: Dict[str, Dict], min_value: float = 5000) -> None:
+    """Ensure monitoring file contains all holdings."""
+    data = _load()
+    changed = False
+
+    # Add or update current holdings
+    for market, info in holdings.items():
+        amount = info.get('total_value')
+        if amount is None:
+            balance = info.get('balance', 0)
+            avg_price = info.get('avg_price', 0)
+            amount = balance * avg_price
+
+        if amount < min_value:
+            if market in data:
+                del data[market]
+                changed = True
+            continue
+
+        entry = data.get(market, {'market': market, 'pre_sell': False})
+        if abs(entry.get('amount', 0) - amount) > 1e-8 or market not in data:
+            entry['amount'] = amount
+            data[market] = entry
+            changed = True
+
+    # Remove markets no longer held
+    for market in list(data.keys()):
+        if market not in holdings and data[market].get('amount', 0) >= min_value:
+            del data[market]
+            changed = True
+
+    if changed:
+        _save(data)
+

@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import MagicMock
 
 from core.market_analyzer import MarketAnalyzer
+from unittest.mock import patch
 
 class TestHoldingsPreSell(unittest.TestCase):
     def test_missing_pre_sell_is_created(self):
@@ -22,7 +23,9 @@ class TestHoldingsPreSell(unittest.TestCase):
         ma.api.get_order_info.return_value = {'state': 'cancel'}
         ma.order_manager.place_limit_sell.return_value = (True, {'uuid': 'new'})
 
-        holdings = ma.get_holdings()
+        with patch('core.monitoring_coin.sync_holdings') as mock_sync:
+            holdings = ma.get_holdings()
+            mock_sync.assert_called_once()
         ma.order_manager.place_limit_sell.assert_called_once()
         self.assertEqual(ma.open_positions[0]['sell_uuid'], 'new')
         self.assertIn('KRW-UNI', holdings)

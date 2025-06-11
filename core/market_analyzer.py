@@ -580,6 +580,11 @@ class MarketAnalyzer:
             logger.info(f"보유 코인 조회 완료: {len(holdings)}개")
             # 선매도 주문 상태 확인 및 누락 시 재설정
             self._verify_open_positions(holdings)
+            try:
+                monitoring_coin.sync_holdings(holdings)
+                self._verify_monitoring_pre_sell(holdings)
+            except Exception:
+                pass
             return holdings
         
         except Exception as e:
@@ -1284,6 +1289,21 @@ class MarketAnalyzer:
                     'executed_volume': volume,
                 }
                 self._place_pre_sell(market, fake_order)
+
+    def _verify_monitoring_pre_sell(self, holdings: Dict) -> None:
+        """Check monitoring file and place pre-sell if missing."""
+        for market, info in monitoring_coin.get_monitoring_coins().items():
+            if info.get('pre_sell'):
+                continue
+            holding = holdings.get(market)
+            if not holding:
+                continue
+            fake_order = {
+                'price': holding['avg_price'],
+                'avg_price': holding['avg_price'],
+                'executed_volume': holding['balance'],
+            }
+            self._place_pre_sell(market, fake_order)
 
     def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
         """캔들 데이터 조회"""
