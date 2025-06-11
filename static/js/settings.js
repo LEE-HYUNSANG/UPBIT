@@ -159,10 +159,10 @@ function updateFormValues(settings) {
     setValue('buy_settings.ENTRY_SIZE_INITIAL', buySet.ENTRY_SIZE_INITIAL);
     setValue('buy_settings.LIMIT_WAIT_SEC_1', buySet.LIMIT_WAIT_SEC_1);
     if (document.getElementById('buy_settings.1st_Bid_Price'))
-        document.getElementById('buy_settings.1st_Bid_Price').value = buySet['1st_Bid_Price'] || 'BID1+';
+        document.getElementById('buy_settings.1st_Bid_Price').value = buySet['1st_Bid_Price'] || 'BID1';
     setValue('buy_settings.LIMIT_WAIT_SEC_2', buySet.LIMIT_WAIT_SEC_2);
     if (document.getElementById('buy_settings.2nd_Bid_Price'))
-        document.getElementById('buy_settings.2nd_Bid_Price').value = buySet['2nd_Bid_Price'] || 'ASK1';
+        document.getElementById('buy_settings.2nd_Bid_Price').value = buySet['2nd_Bid_Price'] || 'BID1';
 
     // 매도 설정
     setValue('sell_settings.TP_PCT', settings.sell_settings?.TP_PCT);
