@@ -4,19 +4,23 @@ from concurrent_log_handler import ConcurrentRotatingFileHandler
 from datetime import datetime
 
 def setup_logging():
+    """공통 로깅 설정을 초기화한다."""
+    logger = logging.getLogger()
+    if logger.handlers:
+        return logger
+
     # 로그 디렉토리 생성
     base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     log_dir = os.path.join(base_dir, 'logs')
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
 
     # 로그 파일명 설정 (날짜별)
     current_date = datetime.now().strftime('%Y%m%d')
     log_file = os.path.join(log_dir, f'trading_bot_{current_date}.log')
 
-    # 로거 설정
-    logger = logging.getLogger()
-    logger.setLevel(logging.DEBUG)
+    # 로거 레벨
+    log_level = os.getenv('LOG_LEVEL', 'INFO').upper()
+    logger.setLevel(getattr(logging, log_level, logging.INFO))
 
     # 파일 핸들러 설정 (10MB 크기, 최대 5개 파일 유지)
     file_handler = ConcurrentRotatingFileHandler(
@@ -25,7 +29,7 @@ def setup_logging():
         backupCount=5,
         encoding='utf-8'
     )
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logger.level)
 
     # 콘솔 핸들러 설정
     console_handler = logging.StreamHandler()
@@ -49,8 +53,6 @@ def setup_logging():
     logging.getLogger('socketio').setLevel(logging.WARNING)
 
     # 시작 로그
-    logger.info('='*80)
     logger.info('Trading Bot Logger Initialized')
-    logger.info('='*80)
 
     return logger

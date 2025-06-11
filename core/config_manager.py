@@ -35,9 +35,14 @@
 import json
 from pathlib import Path
 from typing import Dict, Any
+import logging
+from config.logging_config import setup_logging
 
 # config 모듈을 backend_config 이름으로 임포트하여 가독성을 높인다.
 from . import config as backend_config
+
+setup_logging()
+logger = logging.getLogger(__name__)
 from config.order_defaults import DEFAULT_BUY_SETTINGS, DEFAULT_SELL_SETTINGS
 
 class ConfigManager:
@@ -102,7 +107,7 @@ class ConfigManager:
                 self.config = self.default_config.copy()
                 self.save_config()
         except Exception as e:
-            print(f"설정 파일 로드 실패: {e}")
+            logger.error(f"설정 파일 로드 실패: {e}")
             self.config = self.default_config.copy()
     
     def _extract_nested_config(self, config):
@@ -184,7 +189,7 @@ class ConfigManager:
             backend_config.config_instance.update_config(self.config)
             
         except Exception as e:
-            print(f"설정 파일 저장 실패: {e}")
+            logger.error(f"설정 파일 저장 실패: {e}")
     
     def get_config(self) -> Dict[str, Any]:
         """
@@ -309,11 +314,11 @@ class ConfigManager:
             
             # 백엔드 설정 동기화
             backend_config.config_instance.update_config(self.config)
-            
-            print("설정이 성공적으로 저장되었습니다.")
-            
+
+            logger.info("설정이 성공적으로 저장되었습니다.")
+
         except Exception as e:
-            print(f"설정 업데이트 실패: {e}")
+            logger.error(f"설정 업데이트 실패: {e}")
             raise ValueError(f"설정 업데이트 실패: {e}")
             
     def _validate_config(self, cfg: Dict[str, Any]):
