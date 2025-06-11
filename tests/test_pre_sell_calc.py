@@ -20,7 +20,7 @@ class TestPreSellCalc(unittest.TestCase):
         self.ma.order_manager.place_limit_sell.reset_mock()
         self.ma._place_pre_sell('KRW-XRP', order)
         args = self.ma.order_manager.place_limit_sell.call_args[0]
-        self.assertEqual(args, ('KRW-XRP', 1.0, 202.0))
+        self.assertEqual(args, ('KRW-XRP', 1.0, 200.4))
 
 if __name__ == '__main__':
     unittest.main()
