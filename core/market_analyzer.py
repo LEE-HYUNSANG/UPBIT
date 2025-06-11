@@ -906,7 +906,7 @@ class MarketAnalyzer:
                         f"[{market_code}] buy_score = {score:.2f} ( {cmp} score_threshold = {threshold} | {formula} )"
                     )
                     if score >= threshold:
-                        msg += " score_threshold를 넘었다"
+                        msg += " ◆◆◆ score_threshold OVER"
                     logger.info(msg)
 
                     coin_data = {
