@@ -1180,7 +1180,7 @@ class MarketAnalyzer:
                 logger.warning(f"{market} 매수 체결 수량이 없어 선매도 주문을 건너뜁니다.")
                 return
 
-            avg_price = float(buy_order['price']) / executed_volume
+            avg_price = float(buy_order.get('avg_price') or buy_order['price'])
             settings = self.get_sell_settings() or DEFAULT_SELL_SETTINGS.copy()
             tp_pct = float(settings.get('TP_PCT', 0))
             min_ticks = int(settings.get('MINIMUM_TICKS', 2))
@@ -1192,6 +1192,10 @@ class MarketAnalyzer:
                 target_price = avg_price + tick * min_ticks
                 target_price = math.ceil(target_price / tick) * tick
 
+            logger.info(
+                f"{market} 선매도 계산: avg_price={avg_price}, tick={tick}, target={target_price}"
+            )
+
             sell_success, sell_order = self.order_manager.place_limit_sell(
                 market, executed_volume, target_price
             )
@@ -1201,6 +1205,10 @@ class MarketAnalyzer:
                 logger.error(f"{market} 선매도 주문 실패")
         except Exception as e:
             logger.error(f"선매도 주문 처리 중 오류 발생: {str(e)}")
+
+    def place_pre_sell(self, market: str, buy_order: Dict) -> None:
+        """매수 후 선매도 주문을 실행하는 공개 메서드"""
+        self._place_pre_sell(market, buy_order)
 
     def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
         """캔들 데이터 조회"""
