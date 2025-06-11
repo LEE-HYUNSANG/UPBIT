@@ -2,7 +2,10 @@ import json
 import os
 from typing import Dict
 
+from .constants import DEFAULT_COIN_SELECTION
+
 FILE_PATH = os.path.join(os.path.dirname(__file__), 'monitoring_coin.json')
+EXCLUDED = set(DEFAULT_COIN_SELECTION.get('excluded_coins', []))
 
 
 def _load() -> Dict[str, Dict]:
@@ -20,20 +23,23 @@ def _save(data: Dict[str, Dict]) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-def record_buy(market: str, amount: float, pre_sell: bool = False) -> None:
-    """Record buy information for monitoring."""
+def record_trade(market: str, buy_price: float, sell_price: float) -> None:
+    """Record buy/sell information for monitoring."""
     data = _load()
-    data[market] = {'market': market, 'amount': amount, 'pre_sell': pre_sell}
+    data[market] = {
+        'market': market,
+        '매수체결가격': buy_price,
+        '매도주문가격': sell_price,
+    }
     _save(data)
 
 
-def update_pre_sell(market: str, pre_sell: bool = True) -> None:
-    """Update pre-sell status for a market."""
+def update_sell_price(market: str, sell_price: float) -> None:
+    """Update sell order price for a market."""
     data = _load()
-    if market in data:
-        data[market]['pre_sell'] = pre_sell
-    else:
-        data[market] = {'market': market, 'amount': 0.0, 'pre_sell': pre_sell}
+    entry = data.get(market, {'market': market})
+    entry['매도주문가격'] = sell_price
+    data[market] = entry
     _save(data)
 
 
@@ -45,46 +51,31 @@ def remove_market(market: str) -> None:
         _save(data)
 
 
-def get_monitoring_coins(min_value: float = 5000) -> Dict[str, Dict]:
-    """Return monitoring coins excluding those below the min_value."""
+def get_monitoring_coins() -> Dict[str, Dict]:
+    """Return monitoring coins excluding those in the excluded list."""
     data = _load()
-    return {
-        m: info
-        for m, info in data.items()
-        if info.get('amount', 0) >= min_value
-    }
+    return {m: info for m, info in data.items() if m not in EXCLUDED}
 
-def sync_holdings(holdings: Dict[str, Dict], min_value: float = 5000) -> None:
-    """Ensure monitoring file contains all holdings."""
+def sync_holdings(holdings: Dict[str, Dict]) -> None:
+    """Ensure monitoring file contains all holdings except excluded ones."""
     data = _load()
     changed = False
 
-    # Add or update current holdings
-    for market, info in holdings.items():
-        amount = info.get('total_value')
-        if amount is None:
-            balance = info.get('balance', 0)
-            avg_price = info.get('avg_price', 0)
-            amount = balance * avg_price
-
-        if amount < min_value:
-            if market in data:
-                del data[market]
-                changed = True
+    # Add missing holdings
+    for market in holdings.keys():
+        if market in EXCLUDED:
             continue
-
-        entry = data.get(market, {'market': market, 'pre_sell': False})
-        if abs(entry.get('amount', 0) - amount) > 1e-8 or market not in data:
-            entry['amount'] = amount
-            data[market] = entry
+        if market not in data:
+            data[market] = {'market': market}
             changed = True
 
     # Remove markets no longer held
     for market in list(data.keys()):
-        if market not in holdings and data[market].get('amount', 0) >= min_value:
+        if market not in holdings or market in EXCLUDED:
             del data[market]
             changed = True
 
     if changed:
         _save(data)
+
 
