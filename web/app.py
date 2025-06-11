@@ -109,6 +109,16 @@ bot_status = {
     'last_update': None
 }
 
+# 애플리케이션 재기동 시 모니터링 파일 확인
+def initialize_monitoring():
+    """Ensure monitoring data and pre-sell orders are synced on startup."""
+    try:
+        logger.info("모니터링 파일 확인 중...")
+        market_analyzer.get_holdings()
+        logger.info("모니터링 파일 확인 완료")
+    except Exception as e:
+        logger.error(f"모니터링 파일 확인 실패: {str(e)}")
+
 # 설정 파일 경로
 CONFIG_FILE = 'config.json'
 
@@ -1007,6 +1017,7 @@ if __name__ == '__main__':
         # 초기 상태 설정
         bot_status['is_running'] = True
         market_analyzer.start()  # 실행 상태로 시작
+        initialize_monitoring()
         
         # 백그라운드 스레드 시작
         update_thread = threading.Thread(target=background_updates)
