@@ -430,7 +430,7 @@ class MarketAnalyzer:
         if price < 100:
             return 0.1
         if price < 1000:
-            return 0.1
+            return 1
         if price < 10000:
             return 5
         if price < 100000:
