@@ -947,7 +947,7 @@ MONITORING_INTERVAL=10
         "investment_amount": 7000,
         "max_coins": 7,
         "min_price": 700,
-        "max_price": 26666
+        "max_price": 70000
     },
     "notifications": {...}
 }
