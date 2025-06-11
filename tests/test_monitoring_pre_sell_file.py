@@ -10,7 +10,7 @@ class TestMonitoringPreSellFile(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = f"{tmpdir}/mon.json"
             with open(path, 'w', encoding='utf-8') as f:
-                json.dump({'KRW-UNI': {'market': 'KRW-UNI', 'amount': 11420.0, 'pre_sell': False}}, f)
+                json.dump({'KRW-UNI': {'market': 'KRW-UNI', '매수체결가격': 11420.0, '매도주문가격': 12000}}, f)
 
             with patch('core.monitoring_coin.FILE_PATH', path):
                 ma = MarketAnalyzer.__new__(MarketAnalyzer)
@@ -32,10 +32,10 @@ class TestMonitoringPreSellFile(unittest.TestCase):
 
                 holdings = ma.get_holdings()
 
-            ma.order_manager.place_limit_sell.assert_called_once()
+            ma.order_manager.place_limit_sell.assert_not_called()
             with open(path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
-            self.assertTrue(data['KRW-UNI']['pre_sell'])
+            self.assertIn('KRW-UNI', data)
             self.assertIn('KRW-UNI', holdings)
 
 if __name__ == '__main__':

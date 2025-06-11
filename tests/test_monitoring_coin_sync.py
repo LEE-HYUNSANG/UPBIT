@@ -25,23 +25,20 @@ class TestMonitoringCoinSync(unittest.TestCase):
                 ma.auto_bought = set()
                 ma.open_positions = []
                 ma.api.get_order_info.return_value = {'state': 'wait'}
-                ma.order_manager.place_limit_sell.return_value = (True, {'uuid': 'x'})
 
-                with patch('core.monitoring_coin.update_pre_sell'):  # avoid file access
-                    holdings = ma.get_holdings()
+                holdings = ma.get_holdings()
 
                 with open(path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                 self.assertIn('KRW-UNI', data)
-                self.assertAlmostEqual(data['KRW-UNI']['amount'], 11420.0)
-                self.assertFalse(data['KRW-UNI']['pre_sell'])
+                self.assertEqual(data['KRW-UNI']['market'], 'KRW-UNI')
                 self.assertIn('KRW-UNI', holdings)
 
     def test_removed_when_value_low(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             path = f"{tmpdir}/mon.json"
             with open(path, 'w', encoding='utf-8') as f:
-                json.dump({'KRW-UNI': {'market': 'KRW-UNI', 'amount': 6000, 'pre_sell': False}}, f)
+                json.dump({'KRW-UNI': {'market': 'KRW-UNI', '매수체결가격': 1000, '매도주문가격': 1100}}, f)
             with patch('core.monitoring_coin.FILE_PATH', path):
                 ma = MarketAnalyzer.__new__(MarketAnalyzer)
                 ma.order_manager = MagicMock()

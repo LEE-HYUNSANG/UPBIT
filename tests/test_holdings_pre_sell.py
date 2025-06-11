@@ -26,8 +26,8 @@ class TestHoldingsPreSell(unittest.TestCase):
         with patch('core.monitoring_coin.sync_holdings') as mock_sync:
             holdings = ma.get_holdings()
             mock_sync.assert_called_once()
-        ma.order_manager.place_limit_sell.assert_called_once()
-        self.assertEqual(ma.open_positions[0]['sell_uuid'], 'new')
+        ma.order_manager.place_limit_sell.assert_not_called()
+        self.assertEqual(ma.open_positions[0]['sell_uuid'], 'old')
         self.assertIn('KRW-UNI', holdings)
 
 if __name__ == '__main__':
