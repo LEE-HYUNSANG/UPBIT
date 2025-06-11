@@ -427,6 +427,15 @@ class UpbitAPI:
             self.logger.error(f"주문 정보 조회 실패: {str(e)}")
             return None
 
+    def get_open_orders(self, market: str, state: str = 'wait'):
+        """지정된 마켓의 미체결 주문 목록 조회"""
+        try:
+            params = {'market': market, 'state': state}
+            return self.send_request('GET', f'{self.server_url}/v1/orders', params)
+        except Exception as e:
+            self.logger.error(f"미체결 주문 조회 실패: {str(e)}")
+            return None
+
     def get_top_volume_tickers(self, base: str = "KRW", count: int = 100):
         """거래량 상위 티커 조회"""
         try:

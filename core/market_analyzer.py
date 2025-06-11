@@ -124,6 +124,9 @@ class MarketAnalyzer:
         self.invalid_markets = set()
         # 자동 매매로 이미 매수한 코인 추적
         self.auto_bought = set()
+        # 매수 가격별 선매도 주문 관리용 리스트
+        # [{'market': str, 'entry_price': float, 'volume': float, 'sell_uuid': str}]
+        self.open_positions = []
 
     def register_socketio(self, socketio):
         """웹소켓 이벤트 핸들러 등록"""
@@ -566,6 +569,8 @@ class MarketAnalyzer:
                     logger.info(f"KRW 잔고: {self.krw_balance:,.0f}원")
             
             logger.info(f"보유 코인 조회 완료: {len(holdings)}개")
+            # 선매도 주문 상태 확인 및 누락 시 재설정
+            self._verify_open_positions(holdings)
             return holdings
         
         except Exception as e:
@@ -1210,6 +1215,26 @@ class MarketAnalyzer:
             )
             if sell_success and sell_order:
                 logger.info(f"{market} 선매도 주문 완료 - uuid={sell_order['uuid']}")
+                # 매수 가격별 선매도 주문 정보 저장 또는 갱신
+                updated = False
+                for pos in self.open_positions:
+                    if (
+                        pos['market'] == market
+                        and abs(pos['entry_price'] - avg_price) < 1e-8
+                        and abs(pos['volume'] - executed_volume) < 1e-8
+                    ):
+                        pos['sell_uuid'] = sell_order['uuid']
+                        updated = True
+                        break
+                if not updated:
+                    self.open_positions.append(
+                        {
+                            'market': market,
+                            'entry_price': avg_price,
+                            'volume': executed_volume,
+                            'sell_uuid': sell_order['uuid'],
+                        }
+                    )
             else:
                 logger.error(f"{market} 선매도 주문 실패")
         except Exception as e:
@@ -1218,6 +1243,28 @@ class MarketAnalyzer:
     def place_pre_sell(self, market: str, buy_order: Dict) -> None:
         """매수 후 선매도 주문을 실행하는 공개 메서드"""
         self._place_pre_sell(market, buy_order)
+
+    def _verify_open_positions(self, holdings: Dict) -> None:
+        """보유 코인 대비 선매도 주문 상태 확인"""
+        for pos in list(self.open_positions):
+            market = pos['market']
+            volume = pos['volume']
+            uuid = pos.get('sell_uuid')
+
+            holding = holdings.get(market)
+            if not holding or holding['balance'] < volume - 1e-8:
+                # 보유 수량이 부족하면 포지션 제거
+                self.open_positions.remove(pos)
+                continue
+
+            order_info = self.api.get_order_info(uuid) if uuid else None
+            if not order_info or order_info.get('state') != 'wait':
+                fake_order = {
+                    'price': pos['entry_price'],
+                    'avg_price': pos['entry_price'],
+                    'executed_volume': volume,
+                }
+                self._place_pre_sell(market, fake_order)
 
     def get_candles(self, market: str, interval: str = 'minute15', count: int = 100) -> List[Dict]:
         """캔들 데이터 조회"""
