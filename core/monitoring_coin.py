@@ -25,6 +25,8 @@ def _save(data: Dict[str, Dict]) -> None:
 
 def record_trade(market: str, buy_price: float, sell_price: float) -> None:
     """Record buy/sell information for monitoring."""
+    if market in EXCLUDED:
+        return
     data = _load()
     data[market] = {
         'market': market,
@@ -36,6 +38,8 @@ def record_trade(market: str, buy_price: float, sell_price: float) -> None:
 
 def update_sell_price(market: str, sell_price: float) -> None:
     """Update sell order price for a market."""
+    if market in EXCLUDED:
+        return
     data = _load()
     entry = data.get(market, {'market': market})
     entry['매도주문가격'] = sell_price
