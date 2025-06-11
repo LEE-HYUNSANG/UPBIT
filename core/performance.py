@@ -13,16 +13,9 @@ import pandas as pd
 import numpy as np
 import logging
 import os
+from config.logging_config import setup_logging
 
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=getattr(logging, log_level, logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('trading.log', encoding='utf-8'),
-        logging.StreamHandler()
-    ]
-)
+setup_logging()
 
 class TradingError(Exception):
     pass
