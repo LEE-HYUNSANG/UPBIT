@@ -111,6 +111,13 @@ pip install -r requirements.txt
 있습니다. 더 자세한 정보를 원한다면 `.env` 파일에서 `LOG_LEVEL=DEBUG`로
 설정한 뒤 다시 실행하세요.
 
+또한 `telegram_test.py` 스크립트로 토큰과 채널 설정을 바로 확인할 수 있습니다.
+다음 명령을 실행하여 테스트 메시지가 정상적으로 전송되는지 확인해 보세요.
+
+```bash
+python telegram_test.py
+```
+
 ## 주의사항
 
 1. 거래 설정
